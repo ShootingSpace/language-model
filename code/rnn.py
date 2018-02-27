@@ -117,10 +117,27 @@ class RNN(object):
 
 		no return values
 		'''
-
+		ds_pre = np.zeros((self.hidden_dims,))
 		for t in reversed(range(len(x))):
 			##########################
 			# --- your code here --- #
+			xt = make_onehot(x[t], self.vocab_size)
+			dt = make_onehot(d[t], self.out_vocab_size)
+			yt = y[t, :]
+			st = s[t, :]
+
+			# compute the gradient of Sigmoid w.r.t to hidden state
+			dsigmoid = grad(st) #shape(hidd,)
+			diff_out = dt - yt #shape(out,)
+			diff_in = self.W.T.dot(diff_out) * dsigmoid #shape(hidd,)
+
+			# compute the gradient of W
+			self.deltaW += np.outer(diff_out, st) #shape(out, hidd)
+		    # compute the gradient of the loss with respect to V
+			self.deltaV = np.outer(diff_in, xt) #shape(hidd, voc)
+		    # compute the gradient with respect to U
+			self.deltaU = np.outer(diff_in, s[t-1, :]) #shape(hidd, hidd)
+
 			##########################
 
 
