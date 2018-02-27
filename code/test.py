@@ -43,7 +43,7 @@ hdim = 2
 # RNN with vocab size 3 and 2 hidden layers
 # Note that, for the binary prediction output vocab size should be 2 
 # for test case simplicity, here we will use the same input and vocab size
-r = RNN(vocabsize,hdim)
+r = RNN(vocabsize,hdim,vocabsize)
 r.V[0][0]=0.7
 r.V[0][1]=0.3
 r.V[0][2]=0.4
