@@ -134,9 +134,9 @@ class RNN(object):
             # compute the gradient of W
             self.deltaW += np.outer(diff_out, st) #shape(out, hidd)
             # compute the gradient of the loss with respect to V
-            self.deltaV = np.outer(diff_in, xt) #shape(hidd, voc)
+            self.deltaV += np.outer(diff_in, xt) #shape(hidd, voc)
             # compute the gradient with respect to U
-            self.deltaU = np.outer(diff_in, s[t-1, :]) #shape(hidd, hidd)
+            self.deltaU += np.outer(diff_in, s[t-1, :]) #shape(hidd, hidd)
 
             ##########################
 
