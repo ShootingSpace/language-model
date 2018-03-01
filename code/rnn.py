@@ -489,8 +489,8 @@ class RNN(object):
                 # stdout.write("\tepoch done in %.02f seconds" % (time.time() - t0))
                 # stdout.write("\tnew loss: {0}".format(loss))
                 # stdout.flush()
-                logging.info("\t        epoch done in {0:.2f} seconds\tnew loss: {0}".format(
-                                                            time.time() - t0, loss) )
+                logging.info("\t epoch done in {0:.2f} seconds\tnew loss: {1}".format(
+                                                            (time.time() - t0), loss))
                 # logging.info("\tnew loss: {0}".format(loss))
 
             if loss < best_loss:
