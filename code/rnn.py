@@ -6,6 +6,11 @@ import numpy as np
 from utils import *
 from rnnmath import *
 from sys import stdout
+import itertools
+import os
+from os.path import join as pjoin
+import logging
+logging.basicConfig(level=logging.INFO)
 
 
 class RNN(object):
@@ -395,13 +400,20 @@ class RNN(object):
         log                whether or not to print out log messages. (default log=True)
         '''
         if log:
-            stdout.write("\nTraining model for {0} epochs\ntraining set: {1} sentences (batch size {2})".format(epochs, len(X), batch_size))
-            stdout.write("\nOptimizing loss on {0} sentences".format(len(X_dev)))
-            stdout.write("\nVocab size: {0}\nHidden units: {1}".format(self.vocab_size, self.hidden_dims))
-            stdout.write("\nSteps for back propagation: {0}".format(back_steps))
-            stdout.write("\nInitial learning rate set to {0}, annealing set to {1}".format(learning_rate, anneal))
-            stdout.write("\n\ncalculating initial mean loss on dev set")
-            stdout.flush()
+            # stdout.write("\nTraining model for {0} epochs\ntraining set: {1} sentences (batch size {2})".format(epochs, len(X), batch_size))
+            # stdout.write("\nOptimizing loss on {0} sentences".format(len(X_dev)))
+            # stdout.write("\nVocab size: {0}\nHidden units: {1}".format(self.vocab_size, self.hidden_dims))
+            # stdout.write("\nSteps for back propagation: {0}".format(back_steps))
+            # stdout.write("\nInitial learning rate set to {0}, annealing set to {1}".format(learning_rate, anneal))
+            # stdout.write("\n\ncalculating initial mean loss on dev set")
+            # stdout.flush()
+            ####################################################
+            logging.info("Training model for {0} epochs\ntraining set: {1} sentences (batch size {2})".format(epochs, len(X), batch_size))
+            logging.info("Optimizing loss on {0} sentences".format(len(X_dev)))
+            logging.info("Vocab size: {0}\nHidden units: {1}".format(self.vocab_size, self.hidden_dims))
+            logging.info("Steps for back propagation: {0}".format(back_steps))
+            logging.info("Initial learning rate set to {0}, annealing set to {1}".format(learning_rate, anneal))
+            logging.info("calculating initial mean loss on dev set")
 
         t_start = time.time()
         loss_function = self.compute_loss
@@ -410,8 +422,9 @@ class RNN(object):
         initial_loss = sum([loss_function(X_dev[i], D_dev[i]) for i in range(len(X_dev))]) / loss_sum
 
         if log or not log:
-            stdout.write(": {0}\n".format(initial_loss))
-            stdout.flush()
+            # stdout.write(": {0}\n".format(initial_loss))
+            # stdout.flush()
+            logging.info(": {0}\n".format(initial_loss))
 
         prev_loss = initial_loss
         loss_watch_count = -1
@@ -430,8 +443,9 @@ class RNN(object):
                 learning_rate = a0
 
             if log:
-                stdout.write("\nepoch %d, learning rate %.04f" % (epoch+1, learning_rate))
-                stdout.flush()
+                # stdout.write("\nepoch %d, learning rate %.04f" % (epoch+1, learning_rate))
+                # stdout.flush()
+                logging.info("epoch %d, learning rate %.04f" % (epoch+1, learning_rate))
 
             t0 = time.time()
             count = 0
@@ -472,9 +486,12 @@ class RNN(object):
             loss = sum([loss_function(X_dev[i], D_dev[i]) for i in range(len(X_dev))])/loss_sum
 
             if log:
-                stdout.write("\tepoch done in %.02f seconds" % (time.time() - t0))
-                stdout.write("\tnew loss: {0}".format(loss))
-                stdout.flush()
+                # stdout.write("\tepoch done in %.02f seconds" % (time.time() - t0))
+                # stdout.write("\tnew loss: {0}".format(loss))
+                # stdout.flush()
+                logging.info("\t        epoch done in {0:.2f} seconds\tnew loss: {0}".format(
+                                                            time.time() - t0, loss) )
+                # logging.info("\tnew loss: {0}".format(loss))
 
             if loss < best_loss:
                 best_loss = loss
@@ -488,6 +505,7 @@ class RNN(object):
                 min_change_count = 0
             if min_change_count > 2:
                 print("\n\ntraining finished after {0} epochs due to minimal change in loss".format(epoch+1))
+                logging.info("\n\ntraining finished after {0} epochs due to minimal change in loss".format(epoch+1))
                 break
 
             prev_loss = loss
@@ -496,9 +514,13 @@ class RNN(object):
 
         if min_change_count <= 2:
             print("\n\ntraining finished after reaching maximum of {0} epochs".format(epochs))
+            logging.info("\n\ntraining finished after reaching maximum of {0} epochs".format(epochs))
+
         print("best observed loss was {0}, at epoch {1}".format(best_loss, (best_epoch+1)))
+        logging.info("best observed loss was {0}, at epoch {1}".format(best_loss, (best_epoch+1)))
 
         print("setting U, V, W to matrices from best epoch")
+        logging.info("setting U, V, W to matrices from best epoch")
         self.U, self.V, self.W = bestU, bestV, bestW
 
         return best_loss
@@ -652,8 +674,17 @@ class RNN(object):
 if __name__ == "__main__":
 
     mode = sys.argv[1].lower()
-    data_folder = sys.argv[2]
+    #data_folder = sys.argv[2]
+    data_folder = "data"
+    epochs = int(sys.argv[2])
+
     np.random.seed(2018)
+
+    output_dir = "output"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    file_handler = logging.FileHandler(pjoin(output_dir, "log.txt"))
+    logging.getLogger().addHandler(file_handler)
 
     if mode == "train-lm":
         '''
@@ -664,9 +695,9 @@ if __name__ == "__main__":
         dev_size = 1000
         vocab_size = 2000
 
-        hdim = int(sys.argv[3])
-        lookback = int(sys.argv[4])
-        lr = float(sys.argv[5])
+        # hdim = int(sys.argv[3])
+        # lookback = int(sys.argv[4])
+        # lr = float(sys.argv[5])
 
         # get the data set vocabulary
         vocab = pd.read_table(data_folder + "/vocab.wiki.txt", header=None, sep="\s+", index_col=0, names=['count', 'freq'], )
@@ -676,6 +707,7 @@ if __name__ == "__main__":
         # calculate loss vocabulary words due to vocab_size
         fraction_lost = fraq_loss(vocab, word_to_num, vocab_size)
         print("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
+        logging.info("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
 
         docs = load_lm_dataset(data_folder + '/wiki-train.txt')
         S_train = docs_to_indices(docs, word_to_num, 1, 1)
@@ -697,14 +729,34 @@ if __name__ == "__main__":
 
         ##########################
         # --- your code here --- #
+        """ Perform parameter tuning
+        Use a fixed vocabulary of size 2000, and vary the number of:
+            hidden units (at least: 25, 50),
+            the look-back in backpropagation (at least: 0, 2, 5),
+            and learning rate (at least: 0.5, 0.1, 0.05).
+        """
+        hyper_params = [[25, 50, 100], [0, 2, 5], [0.5, 0.1, 0.05, 0.01]]
+        hyper_params = list(itertools.product(*hyper_params))
+        logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
+                                        hyper_params))
+        logging.info("Total experiments {}".format(len(hyper_params)))
+        for hyper_param in hyper_params:
+            hdim = hyper_param[0]
+            lookback = hyper_param[1]
+            lr = hyper_param[2]
+            rnn = RNN(vocab_size, hdim, vocab_size)
+            run_loss = rnn.train(X_train, D_train, X_dev, D_dev, epochs = epochs,
+                                  learning_rate = lr, back_steps = lookback)
         ##########################
 
-        run_loss = -1
+        #run_loss = -1
     adjusted_loss = -1
 
     print("Unadjusted: %.03f" % np.exp(run_loss))
     print("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
-
+    logging.info("Unadjusted: %.03f" % np.exp(run_loss))
+    logging.info("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
+    logging.info("="*10)
 
     if mode == "train-np":
         '''
