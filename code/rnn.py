@@ -678,7 +678,7 @@ if __name__ == "__main__":
     data_folder = "data"
     epochs = int(sys.argv[2])
 
-    np.random.seed(2018)
+    # np.random.seed(2018)
 
     output_dir = "output"
     if not os.path.exists(output_dir):
@@ -741,6 +741,7 @@ if __name__ == "__main__":
                                         hyper_params))
         logging.info("Total experiments {}".format(len(hyper_params)))
         for hyper_param in hyper_params:
+            np.random.seed(2018)
             hdim = hyper_param[0]
             lookback = hyper_param[1]
             lr = hyper_param[2]
