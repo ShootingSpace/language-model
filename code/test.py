@@ -41,7 +41,7 @@ deltaW_3_exp_np = np.array([[ 0.50701159, 0.47024475], [-0.27214729, -0.25241205
 vocabsize = 3
 hdim = 2
 # RNN with vocab size 3 and 2 hidden layers
-# Note that, for the binary prediction output vocab size should be 2 
+# Note that, for the binary prediction output vocab size should be 2
 # for test case simplicity, here we will use the same input and vocab size
 r = RNN(vocabsize,hdim,vocabsize)
 r.V[0][0]=0.7

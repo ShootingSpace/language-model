@@ -9,6 +9,7 @@ from sys import stdout
 import itertools
 import os
 from os.path import join as pjoin
+from tempfile import TemporaryFile
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -132,15 +133,15 @@ class RNN(object):
 
             # compute the gradient of Sigmoid w.r.t to hidden state
             dsigmoid = grad(st) #shape(hidd,)
-            diff_out = dt - yt #shape(out,)
-            diff_in = self.W.T.dot(diff_out) * dsigmoid #shape(hidd,)
+            delta_out = dt - yt #shape(out,)
+            delta_in = self.W.T.dot(delta_out) * dsigmoid #shape(hidd,)
 
             # compute the gradient of W
-            self.deltaW += np.outer(diff_out, st) #shape(out, hidd)
+            self.deltaW += np.outer(delta_out, st) #shape(out, hidd)
             # compute the gradient of the loss with respect to V
-            self.deltaV += np.outer(diff_in, xt) #shape(hidd, voc)
+            self.deltaV += np.outer(delta_in, xt) #shape(hidd, voc)
             # compute the gradient with respect to U
-            self.deltaU += np.outer(diff_in, s[t-1, :]) #shape(hidd, hidd)
+            self.deltaU += np.outer(delta_in, s[t-1, :]) #shape(hidd, hidd)
 
             ##########################
 
@@ -165,6 +166,34 @@ class RNN(object):
 
         ##########################
         # --- your code here --- #
+        # ds -- Upstream gradients of all hidden states
+        delta_s_in = np.zeros((self.hidden_dims, ))
+        for t in reversed(range(len(x))):
+            xt = make_onehot(x[t], self.vocab_size)
+            st = s[t, :]
+            # compute the gradient of W
+            if t == len(x)-1:
+                dt = make_onehot(d[0], self.out_vocab_size)
+                yt = y[t, :]
+                delta_out = dt - yt #shape(out,)
+                self.deltaW += np.outer(delta_out, st) #shape(out, hidd)
+            else:
+                delta_out = np.zeros_like(yt)
+
+            # compute the gradient of Sigmoid w.r.t to hidden state
+            dsigmoid = grad(st) #shape(hidd,)
+            # delta_in = dsigmoid * self.W.T.dot(delta_out) #shape(hidd,)
+
+            delta_s_in += np.dot(self.W.T, delta_out) # backprop into h
+            delta_s_in *= dsigmoid # # backprop through Sigmoid nonlinearity
+
+            # compute the gradient of the loss with respect to V
+            self.deltaV += np.outer(delta_s_in, xt) #shape(hidd, voc)
+            # compute the gradient with respect to U
+            self.deltaU += np.outer(delta_s_in, s[t-1, :]) #shape(hidd, hidd)
+
+            # update derivative of next hidden state
+            delta_s_in = np.dot( self.U.T, delta_s_in)
         ##########################
 
 
@@ -196,33 +225,31 @@ class RNN(object):
 
             # compute the gradient of Sigmoid w.r.t to hidden state
             dsigmoid = grad(st) #shape(hidd,)
-            diff_out = dt - yt #shape(out,)
-            diff_in = self.W.T.dot(diff_out) * dsigmoid #shape(hidd,)
+            delta_out = dt - yt #shape(out,)
+            delta_in = self.W.T.dot(delta_out) * dsigmoid #shape(hidd,)
             # compute the gradient of W
-            self.deltaW += np.outer(diff_out, st) #shape(out, hidd)
+            self.deltaW += np.outer(delta_out, st) #shape(out, hidd)
             # compute the gradient of the loss with respect to V
-            self.deltaV += np.outer(diff_in, xt) #shape(hidd, voc)
+            self.deltaV += np.outer(delta_in, xt) #shape(hidd, voc)
             # compute the gradient with respect to U
-            self.deltaU += np.outer(diff_in, s[t-1, :]) #shape(hidd, hidd)
+            self.deltaU += np.outer(delta_in, s[t-1, :]) #shape(hidd, hidd)
 
             # steps > 0
-            diff_in_tau = diff_in
+            delta_in_tau = delta_in
             for step in range(1, steps+1):
                 tau = t - step
                 if tau < 0:
                     break
                 xtau = make_onehot(x[tau], self.vocab_size)
-                dtau = make_onehot(d[tau], self.out_vocab_size)
-                ytau = y[tau, :]
                 stau = s[tau, :]
                 # compute the gradient of Sigmoid w.r.t to hidden state
                 dsigmoid_tau = grad(stau) #shape(hidd,)
-                diff_in_tau = self.U.T.dot(diff_in_tau) * dsigmoid_tau #shape(hidd,)
+                delta_in_tau = self.U.T.dot(delta_in_tau) * dsigmoid_tau #shape(hidd,)
 
                 # compute the gradient of the loss with respect to V
-                self.deltaV += np.outer(diff_in_tau, xtau) #shape(hidd, voc)
+                self.deltaV += np.outer(delta_in_tau, xtau) #shape(hidd, voc)
                 # compute the gradient with respect to U
-                self.deltaU += np.outer(diff_in_tau, s[tau-1, :]) #shape(hidd, hidd)
+                self.deltaU += np.outer(delta_in_tau, s[tau-1, :]) #shape(hidd, hidd)
 
             ##########################
 
@@ -248,6 +275,53 @@ class RNN(object):
 
         ##########################
         # --- your code here --- #
+        # ds -- Upstream gradients of all hidden states
+        delta_s_in = np.zeros((self.hidden_dims, ))
+        for t in reversed(range(len(x))):
+            xt = make_onehot(x[t], self.vocab_size)
+            st = s[t, :]
+            # compute the gradient of W
+            if t == len(x)-1:
+                dt = make_onehot(d[0], self.out_vocab_size)
+                yt = y[t, :]
+                delta_out = dt - yt #shape(out,)
+                self.deltaW += np.outer(delta_out, st) #shape(out, hidd)
+            else:
+                delta_out = np.zeros_like(yt)
+
+            # compute the gradient of Sigmoid w.r.t to hidden state
+            dsigmoid = grad(st) #shape(hidd,)
+            delta_s_in += np.dot(self.W.T, delta_out) # backprop into h
+            delta_s_in *= dsigmoid # # backprop through Sigmoid nonlinearity
+
+            # compute the gradient of the loss with respect to V
+            self.deltaV += np.outer(delta_s_in, xt) #shape(hidd, voc)
+            # compute the gradient with respect to U
+            self.deltaU += np.outer(delta_s_in, s[t-1, :]) #shape(hidd, hidd)
+
+            # update derivative of next hidden state
+            delta_s_in = np.dot( self.U.T, delta_s_in)
+
+            # steps > 0
+            for step in range(1, steps+1):
+                tau = t - step
+                if tau < 0:
+                    break
+                xtau = make_onehot(x[tau], self.vocab_size)
+                stau = s[tau, :]
+                # compute the gradient of Sigmoid w.r.t to hidden state
+                dsigmoid_tau = grad(stau) #shape(hidd,)
+                # delta_in_tau = self.U.T.dot(delta_in_tau) * dsigmoid_tau #shape(hidd,)
+                delta_s_in *= dsigmoid_tau
+
+                # compute the gradient of the loss with respect to V
+                self.deltaV += np.outer(delta_s_in, xtau) #shape(hidd, voc)
+                # compute the gradient with respect to U
+                self.deltaU += np.outer(delta_s_in, s[tau-1, :]) #shape(hidd, hidd)
+
+                # update derivative of next hidden state
+                delta_s_in = np.dot( self.U.T, delta_s_in)
+
         ##########################
 
 
@@ -294,6 +368,10 @@ class RNN(object):
 
         ##########################
         # --- your code here --- #
+        y , _ = self.predict(x)
+        dt = make_onehot(d[-1], self.out_vocab_size)
+
+        loss = -dt.dot(np.log(y[-1]))
         ##########################
 
         return loss
@@ -313,9 +391,10 @@ class RNN(object):
 
         ##########################
         # --- your code here --- #
+        y , _ = self.predict(x)
         ##########################
 
-        return 0
+        return 1 if np.argmax(y[-1]) == d[0] else 0
 
 
     def compare_num_pred(self, x, d):
@@ -685,13 +764,14 @@ if __name__ == "__main__":
         os.makedirs(output_dir)
     file_handler = logging.FileHandler(pjoin(output_dir, "log.txt"))
     logging.getLogger().addHandler(file_handler)
+    run_loss = -1
 
     if mode == "train-lm":
         '''
         code for training language model.
         change this to different values, or use it to get you started with your own testing class
         '''
-        train_size = 1000
+        train_size = 25000
         dev_size = 1000
         vocab_size = 2000
 
@@ -735,7 +815,7 @@ if __name__ == "__main__":
             the look-back in backpropagation (at least: 0, 2, 5),
             and learning rate (at least: 0.5, 0.1, 0.05).
         """
-        hyper_params = [[25, 50, 100], [0, 2, 5], [0.5, 0.1, 0.05, 0.01]]
+        hyper_params = [[50], [0], [0.5]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))
@@ -748,16 +828,28 @@ if __name__ == "__main__":
             rnn = RNN(vocab_size, hdim, vocab_size)
             run_loss = rnn.train(X_train, D_train, X_dev, D_dev, epochs = epochs,
                                   learning_rate = lr, back_steps = lookback)
+
+            # Load the test set
+            docs = load_lm_dataset(data_folder + '/wiki-test.txt')
+            S_test = docs_to_indices(docs, word_to_num, 1, 1)
+            X_test, D_test = seqs_to_lmXY(S_test)
+            loss = self.compute_mean_loss(X_test, D_test)
+            logging.info("Mean loss on the full test set: {}".format(loss))
+            np.save('rnn.U.npy', self.U)
+            np.save('rnn.V.npy', self.V)
+            np.save('rnn.W.npy', self.W)
+            logging.info("="*10)
+            
         ##########################
 
-        #run_loss = -1
+
     adjusted_loss = -1
 
     print("Unadjusted: %.03f" % np.exp(run_loss))
     print("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
     logging.info("Unadjusted: %.03f" % np.exp(run_loss))
     logging.info("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
-    logging.info("="*10)
+
 
     if mode == "train-np":
         '''
