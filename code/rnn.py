@@ -592,13 +592,13 @@ class RNN(object):
         t = time.time() - t_start
 
         if min_change_count <= 2:
-            print("\n\ntraining finished after reaching maximum of {0} epochs".format(epochs))
+            # print("\n\ntraining finished after reaching maximum of {0} epochs".format(epochs))
             logging.info("\n\ntraining finished after reaching maximum of {0} epochs".format(epochs))
 
-        print("best observed loss was {0}, at epoch {1}".format(best_loss, (best_epoch+1)))
+        # print("best observed loss was {0}, at epoch {1}".format(best_loss, (best_epoch+1)))
         logging.info("best observed loss was {0}, at epoch {1}".format(best_loss, (best_epoch+1)))
 
-        print("setting U, V, W to matrices from best epoch")
+        # print("setting U, V, W to matrices from best epoch")
         logging.info("setting U, V, W to matrices from best epoch")
         self.U, self.V, self.W = bestU, bestV, bestW
 
@@ -833,22 +833,22 @@ if __name__ == "__main__":
             docs = load_lm_dataset(data_folder + '/wiki-test.txt')
             S_test = docs_to_indices(docs, word_to_num, 1, 1)
             X_test, D_test = seqs_to_lmXY(S_test)
-            loss = self.compute_mean_loss(X_test, D_test)
+            loss = rnn.compute_mean_loss(X_test, D_test)
             logging.info("Mean loss on the full test set: {}".format(loss))
-            np.save('rnn.U.npy', self.U)
-            np.save('rnn.V.npy', self.V)
-            np.save('rnn.W.npy', self.W)
+            np.save('rnn.U.npy', rnn.U)
+            np.save('rnn.V.npy', rnn.V)
+            np.save('rnn.W.npy', rnn.W)
+            adjusted_loss = adjust_loss(loss, fraction_lost, q, mode='basic')
+            logging.info("Unadjusted: %.03f" % np.exp(loss))
+            logging.info("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
             logging.info("="*10)
-            
+
         ##########################
+    # adjusted_loss = -1
+    #
+    # print("Unadjusted: %.03f" % np.exp(run_loss))
+    # print("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
 
-
-    adjusted_loss = -1
-
-    print("Unadjusted: %.03f" % np.exp(run_loss))
-    print("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
-    logging.info("Unadjusted: %.03f" % np.exp(run_loss))
-    logging.info("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
 
 
     if mode == "train-np":
