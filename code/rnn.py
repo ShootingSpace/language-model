@@ -410,10 +410,9 @@ class RNN(object):
 
         ##########################
         # --- your code here --- #
+        y , _ = self.predict(x)
+        return 1 if p(y[d[0]]) > p(y[d[1]]) else 0
         ##########################
-
-        return 0
-
 
     def compute_acc_lmnp(self, X_dev, D_dev):
         '''
@@ -789,17 +788,17 @@ if __name__ == "__main__":
         print("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
         logging.info("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
 
+        # load training data
         docs = load_lm_dataset(data_folder + '/wiki-train.txt')
         S_train = docs_to_indices(docs, word_to_num, 1, 1)
         X_train, D_train = seqs_to_lmXY(S_train)
+        X_train = X_train[:train_size]
+        D_train = D_train[:train_size]
 
         # Load the dev set (for tuning hyperparameters)
         docs = load_lm_dataset(data_folder + '/wiki-dev.txt')
         S_dev = docs_to_indices(docs, word_to_num, 1, 1)
         X_dev, D_dev = seqs_to_lmXY(S_dev)
-
-        X_train = X_train[:train_size]
-        D_train = D_train[:train_size]
         X_dev = X_dev[:dev_size]
         D_dev = D_dev[:dev_size]
 
@@ -860,9 +859,9 @@ if __name__ == "__main__":
         dev_size = 1000
         vocab_size = 2000
 
-        hdim = int(sys.argv[3])
-        lookback = int(sys.argv[4])
-        lr = float(sys.argv[5])
+        # hdim = int(sys.argv[3])
+        # lookback = int(sys.argv[4])
+        # lr = float(sys.argv[5])
 
         # get the data set vocabulary
         vocab = pd.read_table(data_folder + "/vocab.wiki.txt", header=None, sep="\s+", index_col=0, names=['count', 'freq'], )
@@ -871,7 +870,9 @@ if __name__ == "__main__":
 
         # calculate loss vocabulary words due to vocab_size
         fraction_lost = fraq_loss(vocab, word_to_num, vocab_size)
-        print("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
+        # print("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
+        logging.info("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
+
 
         # load training data
         sents = load_np_dataset(data_folder + '/wiki-train.txt')
@@ -889,12 +890,33 @@ if __name__ == "__main__":
         X_dev = X_dev[:train_size]
         D_dev = D_dev[:train_size]
 
-
         ##########################
         # --- your code here --- #
-        ##########################
+        hyper_params = [[50], [0], [0.5]]
+        hyper_params = list(itertools.product(*hyper_params))
+        logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
+                                        hyper_params))
+        logging.info("Total experiments {}".format(len(hyper_params)))
 
-        acc = 0.
+        min_loss = float("inf")
+        for hyper_param in hyper_params:
+            np.random.seed(2018)
+            hdim = hyper_param[0]
+            lookback = hyper_param[1]
+            lr = hyper_param[2]
+            rnn = RNN(vocab_size, hdim, vocab_size)
+            run_loss = rnn.train_np(X_train, D_train, X_dev, D_dev, epochs = epochs,
+                                  learning_rate = lr, back_steps = lookback)
+            if min_loss > run_loss:
+                min_loss = run_loss
+                best_model = rnn
+
+        # Load the test set
+        sents = load_lm_dataset(data_folder + '/wiki-test.txt')
+        S_test = docs_to_indices(sents, word_to_num, 1, 1)
+        X_test, D_test = seqs_to_lmXY(S_test)
+        acc = best_model.compute_acc_lmnp(X_test, D_test)
+        ##########################
 
         print("Accuracy: %.03f" % acc)
 
