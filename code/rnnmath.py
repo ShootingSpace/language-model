@@ -18,13 +18,13 @@ def make_onehot(i, n):
 
 
 def fraq_loss(vocab, word_to_num, vocabsize):
-	fraction_lost = float(sum([vocab['count'][word] for word in vocab.index if (not word in word_to_num) and (not word == "UUUNKKK")]))
-	fraction_lost /= sum([vocab['count'][word] for word in vocab.index if (not word == "UUUNKKK")])
+	fraction_lost = float(sum([vocab['count'][word] for word in vocab.index if (not word in word_to_num) and (not word == "UNK")]))
+	fraction_lost /= sum([vocab['count'][word] for word in vocab.index if (not word == "UNK")])
 	return fraction_lost
 
 def adjust_loss(loss, fracloss, q, mode='basic'):
 	if mode == 'basic':
-		# remove freebies only: score if had no UUUNKKK
+		# remove freebies only: score if had no UNK
 		return (loss + fracloss*np.log(fracloss))/(1 - fracloss)
 	else:
 		# remove freebies, replace with best prediction on remaining

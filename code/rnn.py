@@ -166,34 +166,22 @@ class RNN(object):
 
         ##########################
         # --- your code here --- #
-        # ds -- Upstream gradients of all hidden states
-        delta_s_in = np.zeros((self.hidden_dims, ))
-        for t in reversed(range(len(x))):
-            xt = make_onehot(x[t], self.vocab_size)
-            st = s[t, :]
-            # compute the gradient of W
-            if t == len(x)-1:
-                dt = make_onehot(d[0], self.out_vocab_size)
-                yt = y[t, :]
-                delta_out = dt - yt #shape(out,)
-                self.deltaW += np.outer(delta_out, st) #shape(out, hidd)
-            else:
-                delta_out = np.zeros_like(yt)
+        t = len(x)-1
+        xt = make_onehot(x[t], self.vocab_size)
+        st = s[t, :]
+        # compute the gradient of W
+        dt = make_onehot(d[0], self.out_vocab_size)
+        yt = y[t, :]
+        delta_out = dt - yt #shape(out,)
+        self.deltaW += np.outer(delta_out, st) #shape(out, hidd)
+        # compute the gradient of Sigmoid w.r.t to hidden state
+        dsigmoid = grad(st) #shape(hidd,)
+        delta_in = dsigmoid * self.W.T.dot(delta_out) #shape(hidd,)
+        # compute the gradient of the loss with respect to V
+        self.deltaV += np.outer(delta_in, xt) #shape(hidd, voc)
+        # compute the gradient with respect to U
+        self.deltaU += np.outer(delta_in, s[t-1, :]) #shape(hidd, hidd)
 
-            # compute the gradient of Sigmoid w.r.t to hidden state
-            dsigmoid = grad(st) #shape(hidd,)
-            # delta_in = dsigmoid * self.W.T.dot(delta_out) #shape(hidd,)
-
-            delta_s_in += np.dot(self.W.T, delta_out) # backprop into h
-            delta_s_in *= dsigmoid # # backprop through Sigmoid nonlinearity
-
-            # compute the gradient of the loss with respect to V
-            self.deltaV += np.outer(delta_s_in, xt) #shape(hidd, voc)
-            # compute the gradient with respect to U
-            self.deltaU += np.outer(delta_s_in, s[t-1, :]) #shape(hidd, hidd)
-
-            # update derivative of next hidden state
-            delta_s_in = np.dot( self.U.T, delta_s_in)
         ##########################
 
 
@@ -275,53 +263,37 @@ class RNN(object):
 
         ##########################
         # --- your code here --- #
-        # ds -- Upstream gradients of all hidden states
-        delta_s_in = np.zeros((self.hidden_dims, ))
-        for t in reversed(range(len(x))):
-            xt = make_onehot(x[t], self.vocab_size)
-            st = s[t, :]
-            # compute the gradient of W
-            if t == len(x)-1:
-                dt = make_onehot(d[0], self.out_vocab_size)
-                yt = y[t, :]
-                delta_out = dt - yt #shape(out,)
-                self.deltaW += np.outer(delta_out, st) #shape(out, hidd)
-            else:
-                delta_out = np.zeros_like(yt)
+        t = len(x)-1
+        xt = make_onehot(x[t], self.vocab_size)
+        st = s[t, :]
+        # compute the gradient of W
+        dt = make_onehot(d[0], self.out_vocab_size)
+        yt = y[t, :]
+        delta_out = dt - yt #shape(out,)
+        self.deltaW += np.outer(delta_out, st) #shape(out, hidd)
+        # compute the gradient of Sigmoid w.r.t to hidden state
+        dsigmoid = grad(st) #shape(hidd,)
+        delta_in = dsigmoid * self.W.T.dot(delta_out) #shape(hidd,)
+        # compute the gradient of the loss with respect to V
+        self.deltaV += np.outer(delta_in, xt) #shape(hidd, voc)
+        # compute the gradient with respect to U
+        self.deltaU += np.outer(delta_in, s[t-1, :]) #shape(hidd, hidd)
 
+        # steps > 0
+        delta_in_tau = delta_in
+        for step in range(1, steps+1):
+            tau = t - step
+            if tau < 0:
+                break
+            xtau = make_onehot(x[tau], self.vocab_size)
+            stau = s[tau, :]
             # compute the gradient of Sigmoid w.r.t to hidden state
-            dsigmoid = grad(st) #shape(hidd,)
-            delta_s_in += np.dot(self.W.T, delta_out) # backprop into h
-            delta_s_in *= dsigmoid # # backprop through Sigmoid nonlinearity
-
+            dsigmoid_tau = grad(stau) #shape(hidd,)
+            delta_in_tau = self.U.T.dot(delta_in_tau) * dsigmoid_tau #shape(hidd,)
             # compute the gradient of the loss with respect to V
-            self.deltaV += np.outer(delta_s_in, xt) #shape(hidd, voc)
+            self.deltaV += np.outer(delta_in_tau, xtau) #shape(hidd, voc)
             # compute the gradient with respect to U
-            self.deltaU += np.outer(delta_s_in, s[t-1, :]) #shape(hidd, hidd)
-
-            # update derivative of next hidden state
-            delta_s_in = np.dot( self.U.T, delta_s_in)
-
-            # steps > 0
-            for step in range(1, steps+1):
-                tau = t - step
-                if tau < 0:
-                    break
-                xtau = make_onehot(x[tau], self.vocab_size)
-                stau = s[tau, :]
-                # compute the gradient of Sigmoid w.r.t to hidden state
-                dsigmoid_tau = grad(stau) #shape(hidd,)
-                # delta_in_tau = self.U.T.dot(delta_in_tau) * dsigmoid_tau #shape(hidd,)
-                delta_s_in *= dsigmoid_tau
-
-                # compute the gradient of the loss with respect to V
-                self.deltaV += np.outer(delta_s_in, xtau) #shape(hidd, voc)
-                # compute the gradient with respect to U
-                self.deltaU += np.outer(delta_s_in, s[tau-1, :]) #shape(hidd, hidd)
-
-                # update derivative of next hidden state
-                delta_s_in = np.dot( self.U.T, delta_s_in)
-
+            self.deltaU += np.outer(delta_in_tau, s[tau-1, :]) #shape(hidd, hidd)
         ##########################
 
 
@@ -411,7 +383,7 @@ class RNN(object):
         ##########################
         # --- your code here --- #
         y , _ = self.predict(x)
-        return 1 if p(y[d[0]]) > p(y[d[1]]) else 0
+        return 1 if y[-1, d[0]] > y[-1, d[1]] else 0
         ##########################
 
     def compute_acc_lmnp(self, X_dev, D_dev):
@@ -597,8 +569,7 @@ class RNN(object):
         # print("best observed loss was {0}, at epoch {1}".format(best_loss, (best_epoch+1)))
         logging.info("best observed loss was {0}, at epoch {1}".format(best_loss, (best_epoch+1)))
 
-        # print("setting U, V, W to matrices from best epoch")
-        logging.info("setting U, V, W to matrices from best epoch")
+        print("setting U, V, W to matrices from best epoch")
         self.U, self.V, self.W = bestU, bestV, bestW
 
         return best_loss
@@ -634,12 +605,17 @@ class RNN(object):
         log                whether or not to print out log messages. (default log=True)
         '''
         if log:
-            stdout.write("\nTraining model for {0} epochs\ntraining set: {1} sentences (batch size {2})".format(epochs, len(X), batch_size))
-            stdout.write("\nOptimizing loss on {0} sentences".format(len(X_dev)))
-            stdout.write("\nVocab size: {0}\nHidden units: {1}".format(self.vocab_size, self.hidden_dims))
-            stdout.write("\nSteps for back propagation: {0}".format(back_steps))
-            stdout.write("\nInitial learning rate set to {0}, annealing set to {1}".format(learning_rate, anneal))
-            stdout.flush()
+            # stdout.write("\nTraining model for {0} epochs\ntraining set: {1} sentences (batch size {2})".format(epochs, len(X), batch_size))
+            # stdout.write("\nOptimizing loss on {0} sentences".format(len(X_dev)))
+            # stdout.write("\nVocab size: {0}\nHidden units: {1}".format(self.vocab_size, self.hidden_dims))
+            # stdout.write("\nSteps for back propagation: {0}".format(back_steps))
+            # stdout.write("\nInitial learning rate set to {0}, annealing set to {1}".format(learning_rate, anneal))
+            # stdout.flush()
+            logging.info("Training model for {0} epochs\ntraining set: {1} sentences (batch size {2})".format(epochs, len(X), batch_size))
+            logging.info("Optimizing loss on {0} sentences".format(len(X_dev)))
+            logging.info("Vocab size: {0}\nHidden units: {1}".format(self.vocab_size, self.hidden_dims))
+            logging.info("Steps for back propagation: {0}".format(back_steps))
+            logging.info("Initial learning rate set to {0}, annealing set to {1}".format(learning_rate, anneal))
 
         t_start = time.time()
         loss_function = self.compute_loss_np
@@ -649,11 +625,15 @@ class RNN(object):
         initial_acc = sum([self.compute_acc_np(X_dev[i], D_dev[i]) for i in range(len(X_dev))]) / len(X_dev)
 
         if log or not log:
-            stdout.write("\n\ncalculating initial mean loss on dev set")
-            stdout.write(": {0}\n".format(initial_loss))
-            stdout.write("calculating initial acc on dev set")
-            stdout.write(": {0}\n".format(initial_acc))
-            stdout.flush()
+            # stdout.write("\n\ncalculating initial mean loss on dev set")
+            # stdout.write(": {0}\n".format(initial_loss))
+            # stdout.write("calculating initial acc on dev set")
+            # stdout.write(": {0}\n".format(initial_acc))
+            # stdout.flush()
+            logging.info("\n\ncalculating initial mean loss on dev set")
+            logging.info(": {0}\n".format(initial_loss))
+            logging.info("calculating initial acc on dev set")
+            logging.info(": {0}\n".format(initial_acc))
 
         prev_loss = initial_loss
         loss_watch_count = -1
@@ -672,8 +652,10 @@ class RNN(object):
                 learning_rate = a0
 
             if log:
-                stdout.write("\nepoch %d, learning rate %.04f" % (epoch+1, learning_rate))
-                stdout.flush()
+                # stdout.write("\nepoch %d, learning rate %.04f" % (epoch+1, learning_rate))
+                # stdout.flush()
+                logging.info("epoch %d, learning rate %.04f" % (epoch+1, learning_rate))
+
 
             t0 = time.time()
             count = 0
@@ -715,10 +697,14 @@ class RNN(object):
             acc = sum([self.compute_acc_np(X_dev[i], D_dev[i]) for i in range(len(X_dev))]) / len(X_dev)
 
             if log:
-                stdout.write("\tepoch done in %.02f seconds" % (time.time() - t0))
-                stdout.write("\tnew loss: {0}".format(loss))
-                stdout.write("\tnew acc: {0}".format(acc))
-                stdout.flush()
+                # stdout.write("\tepoch done in %.02f seconds" % (time.time() - t0))
+                # stdout.write("\tnew loss: {0}".format(loss))
+                # stdout.write("\tnew acc: {0}".format(acc))
+                # stdout.flush()
+                logging.info(
+                "\t epoch done in {0:.2f} seconds\tnew loss: {1}\tnew acc: {2}".format(
+                                            (time.time() - t0), loss, acc))
+
 
             if loss < best_loss:
                 best_loss = loss
@@ -732,7 +718,8 @@ class RNN(object):
             else:
                 min_change_count = 0
             if min_change_count > 2:
-                print("\n\ntraining finished after {0} epochs due to minimal change in loss".format(epoch+1))
+                # print("\n\ntraining finished after {0} epochs due to minimal change in loss".format(epoch+1))
+                logging.info("\n\ntraining finished after {0} epochs due to minimal change in loss".format(epoch+1))
                 break
 
             prev_loss = loss
@@ -740,8 +727,11 @@ class RNN(object):
         t = time.time() - t_start
 
         if min_change_count <= 2:
-            print("\n\ntraining finished after reaching maximum of {0} epochs".format(epochs))
-        print("best observed loss was {0}, acc {1}, at epoch {2}".format(best_loss, best_acc, (best_epoch+1)))
+            # print("\n\ntraining finished after reaching maximum of {0} epochs".format(epochs))
+            logging.info("\n\ntraining finished after reaching maximum of {0} epochs".format(epochs))
+
+        # print("best observed loss was {0}, acc {1}, at epoch {2}".format(best_loss, best_acc, (best_epoch+1)))
+        logging.info("best observed loss was {0}, at epoch {1}".format(best_loss, (best_epoch+1)))
 
         print("setting U, V, W to matrices from best epoch")
         self.U, self.V, self.W = bestU, bestV, bestW
@@ -754,7 +744,7 @@ if __name__ == "__main__":
     mode = sys.argv[1].lower()
     #data_folder = sys.argv[2]
     data_folder = "data"
-    epochs = int(sys.argv[2])
+
 
     # np.random.seed(2018)
 
@@ -770,6 +760,7 @@ if __name__ == "__main__":
         code for training language model.
         change this to different values, or use it to get you started with your own testing class
         '''
+        epochs = int(sys.argv[2])
         train_size = 25000
         dev_size = 1000
         vocab_size = 2000
@@ -785,7 +776,7 @@ if __name__ == "__main__":
 
         # calculate loss vocabulary words due to vocab_size
         fraction_lost = fraq_loss(vocab, word_to_num, vocab_size)
-        print("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
+        # print("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
         logging.info("Retained %d words from %d (%.02f%% of all tokens)\n" % (vocab_size, len(vocab), 100*(1-fraction_lost)))
 
         # load training data
@@ -855,6 +846,7 @@ if __name__ == "__main__":
         starter code for parameter estimation.
         change this to different values, or use it to get you started with your own testing class
         '''
+        epochs = int(sys.argv[2])
         train_size = 1000
         dev_size = 1000
         vocab_size = 2000
@@ -892,7 +884,7 @@ if __name__ == "__main__":
 
         ##########################
         # --- your code here --- #
-        hyper_params = [[50], [0], [0.5]]
+        hyper_params = [[25, 50], [0, 2, 5], [0.5, 0.1, 0.05]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))
@@ -910,24 +902,31 @@ if __name__ == "__main__":
             if min_loss > run_loss:
                 min_loss = run_loss
                 best_model = rnn
+                best_param = [hdim, lookback, lr]
 
         # Load the test set
         sents = load_lm_dataset(data_folder + '/wiki-test.txt')
         S_test = docs_to_indices(sents, word_to_num, 1, 1)
         X_test, D_test = seqs_to_lmXY(S_test)
         acc = best_model.compute_acc_lmnp(X_test, D_test)
+        logging.info(
+        "Best model with hidden_dims: {}, lookback: {}, lr: {}\n obatains acc {}".format(
+                                best_param[0], best_param[1], best_param[2], acc))
+
+        logging.info("Accuracy: %.03f" % acc)
         ##########################
 
-        print("Accuracy: %.03f" % acc)
+        # print("Accuracy: %.03f" % acc)
 
 
     if mode == "predict-lm":
 
-        data_folder = sys.argv[2]
-        rnn_folder = sys.argv[3]
-
+        # data_folder = sys.argv[2]
+        # rnn_folder = sys.argv[3]
         # get saved RNN matrices and setup RNN
-        U,V,W = np.load(rnn_folder + "/rnn.U.npy"), np.load(rnn_folder + "/rnn.V.npy"), np.load(rnn_folder + "/rnn.W.npy")
+        # U,V,W = np.load(rnn_folder + "/rnn.U.npy"), np.load(rnn_folder + "/rnn.V.npy"), np.load(rnn_folder + "/rnn.W.npy")
+        U,V,W = np.load("rnn.U.npy"), np.load("rnn.V.npy"), np.load("rnn.W.npy")
+
         vocab_size = len(V[0])
         hdim = len(U[0])
 
