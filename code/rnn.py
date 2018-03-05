@@ -761,7 +761,7 @@ if __name__ == "__main__":
         change this to different values, or use it to get you started with your own testing class
         '''
         epochs = int(sys.argv[2])
-        train_size = 25000
+        train_size = 1000
         dev_size = 1000
         vocab_size = 2000
 
@@ -805,19 +805,22 @@ if __name__ == "__main__":
             the look-back in backpropagation (at least: 0, 2, 5),
             and learning rate (at least: 0.5, 0.1, 0.05).
         """
-        hyper_params = [[50], [0], [0.5]]
+        hyper_params = [[100], [0, 2, 5], [0.5, 0.1], [50]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))
         logging.info("Total experiments {}".format(len(hyper_params)))
-        for hyper_param in hyper_params:
+        for experiment, hyper_param in enumerate(hyper_params):
+            logging.info("Experiment {}".format(experiment+1))
             np.random.seed(2018)
             hdim = hyper_param[0]
             lookback = hyper_param[1]
             lr = hyper_param[2]
+            batch_size = hyper_param[3]
             rnn = RNN(vocab_size, hdim, vocab_size)
             run_loss = rnn.train(X_train, D_train, X_dev, D_dev, epochs = epochs,
-                                  learning_rate = lr, back_steps = lookback)
+                                  learning_rate = lr, back_steps = lookback,
+                                  batch_size = batch_size)
 
             # Load the test set
             docs = load_lm_dataset(data_folder + '/wiki-test.txt')
@@ -825,9 +828,9 @@ if __name__ == "__main__":
             X_test, D_test = seqs_to_lmXY(S_test)
             loss = rnn.compute_mean_loss(X_test, D_test)
             logging.info("Mean loss on the full test set: {}".format(loss))
-            np.save('rnn.U.npy', rnn.U)
-            np.save('rnn.V.npy', rnn.V)
-            np.save('rnn.W.npy', rnn.W)
+            # np.save('rnn.U.npy', rnn.U)
+            # np.save('rnn.V.npy', rnn.V)
+            # np.save('rnn.W.npy', rnn.W)
             adjusted_loss = adjust_loss(loss, fraction_lost, q, mode='basic')
             logging.info("Unadjusted: %.03f" % np.exp(loss))
             logging.info("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
