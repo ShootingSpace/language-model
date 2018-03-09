@@ -382,9 +382,38 @@ class RNN(object):
 
         ##########################
         # --- your code here --- #
-        y , _ = self.predict(x)
+        y , s = self.predict(x)
+        # s (x+1, hidden)
+        y = softmax_embedding(s[len(x)-1,:], embedding_path)
         return 1 if y[-1, d[0]] > y[-1, d[1]] else 0
         ##########################
+
+    def load_embeddings(self, embedding_path, word_to_num):
+        '''load the embedding, save in array, start with word index'''
+        print("Loading Glove Model")
+        f = open(embedding_path,'r')
+        model = {}
+        words_embeddings = []
+        for line in f:
+            splitLine = line.split()
+            word = splitLine[0]
+
+            if word in word_to_num:
+                embedding = [float(val) for val in splitLine[1:]]
+                words_embeddings.append(word_to_num[word] + embedding)
+
+        words_embeddings.append(word_to_num['UNK'] + np.random.rand(len(embedding)))
+        words_embeddings = np.array(words_embeddings)
+        words_embeddings = words_embeddings[words_embeddings[:,0].argsort()]
+        print(words_embeddings.shape," embedding loaded!")
+        return words_embeddings
+
+
+
+
+    def softmax_embedding(self, hidden_state, embedding_path):
+
+
 
     def compute_acc_lmnp(self, X_dev, D_dev):
         '''
@@ -761,7 +790,7 @@ if __name__ == "__main__":
         change this to different values, or use it to get you started with your own testing class
         '''
         epochs = int(sys.argv[2])
-        train_size = 1000
+        train_size = 25000
         dev_size = 1000
         vocab_size = 2000
 
@@ -805,7 +834,7 @@ if __name__ == "__main__":
             the look-back in backpropagation (at least: 0, 2, 5),
             and learning rate (at least: 0.5, 0.1, 0.05).
         """
-        hyper_params = [[100], [0, 2, 5], [0.5, 0.1], [50]]
+        hyper_params = [[50], [0], [0.5], [50]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))
@@ -828,9 +857,9 @@ if __name__ == "__main__":
             X_test, D_test = seqs_to_lmXY(S_test)
             loss = rnn.compute_mean_loss(X_test, D_test)
             logging.info("Mean loss on the full test set: {}".format(loss))
-            # np.save('rnn.U.npy', rnn.U)
-            # np.save('rnn.V.npy', rnn.V)
-            # np.save('rnn.W.npy', rnn.W)
+            np.save('rnn.U.npy', rnn.U)
+            np.save('rnn.V.npy', rnn.V)
+            np.save('rnn.W.npy', rnn.W)
             adjusted_loss = adjust_loss(loss, fraction_lost, q, mode='basic')
             logging.info("Unadjusted: %.03f" % np.exp(loss))
             logging.info("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
