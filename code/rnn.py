@@ -56,6 +56,7 @@ class RNN(object):
 
         # for data analysis
         self.stats = []
+        self.words_embeddings = np.zeros((self.out_vocab_size, self.hidden_dims+1))
 
     def apply_deltas(self, learning_rate):
         '''
@@ -391,6 +392,38 @@ class RNN(object):
         return predict
         # return 1 if y[-1, d[0]] > y[-1, d[1]] else 0
         ##########################
+
+    def load_embeddings(self, embedding_path, word_to_num):
+        '''load the embedding, save in array, start with word index'''
+        print("Loading Glove Model")
+        f = open(embedding_path,'r')
+        model = {}
+        words_embeddings = []
+        for line in f:
+            splitLine = line.split()
+            word = splitLine[0]
+            if word in word_to_num:
+                embedding = [float(val) for val in splitLine[1:]]
+                words_embeddings.append([word_to_num[word]] + embedding)
+
+        words_embeddings.append(word_to_num['UNK'] + np.random.rand(len(embedding)))
+        words_embeddings = np.array(words_embeddings)
+        print('debug ', words_embeddings.shape )
+        # sort the array according to word index
+        words_embeddings = words_embeddings[words_embeddings[:,0].argsort()]
+        print(words_embeddings.shape," embedding loaded!")
+        return words_embeddings
+
+    def compare_num_pred_with_embedding(self, x, d):
+        '''use pretrained embedding for softmax
+        x        list of words, as indices, e.g.: [0, 4, 2]
+        d        the desired verb and its (re)inflected form (singular/plural), as indices, e.g.: [7, 8]
+
+        return 1 if p(d[0]) > p(d[1]), 0 otherwise
+        '''
+        _ , s = self.predict(x) # s shape (x+1, hidden)
+        y = softmax(self.words_embeddings[:,1:].dot(s[len(x)-1,:]))
+        return 1 if y[-1, d[0]] > y[-1, d[1]] else 0
 
     def compute_acc_lmnp(self, X_dev, D_dev):
         '''
@@ -767,7 +800,7 @@ if __name__ == "__main__":
         change this to different values, or use it to get you started with your own testing class
         '''
         epochs = int(sys.argv[2])
-        train_size = 1000
+        train_size = 25000
         dev_size = 1000
         vocab_size = 2000
 
@@ -811,7 +844,7 @@ if __name__ == "__main__":
             the look-back in backpropagation (at least: 0, 2, 5),
             and learning rate (at least: 0.5, 0.1, 0.05).
         """
-        hyper_params = [[100], [0, 2, 5], [0.5, 0.1], [50]]
+        hyper_params = [[50], [0], [0.5], [50]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))
@@ -834,9 +867,9 @@ if __name__ == "__main__":
             X_test, D_test = seqs_to_lmXY(S_test)
             loss = rnn.compute_mean_loss(X_test, D_test)
             logging.info("Mean loss on the full test set: {}".format(loss))
-            # np.save('rnn.U.npy', rnn.U)
-            # np.save('rnn.V.npy', rnn.V)
-            # np.save('rnn.W.npy', rnn.W)
+            np.save('rnn.U.npy', rnn.U)
+            np.save('rnn.V.npy', rnn.V)
+            np.save('rnn.W.npy', rnn.W)
             adjusted_loss = adjust_loss(loss, fraction_lost, q, mode='basic')
             logging.info("Unadjusted: %.03f" % np.exp(loss))
             logging.info("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
@@ -967,3 +1000,7 @@ if __name__ == "__main__":
         np.savetxt('span.csv', np.array(span), delimiter=',')
 
         print('Number prediction accuracy:', np_acc)
+
+        # r.words_embeddings = r.load_embeddings(data_folder + "/glove.6B.50d.txt", word_to_num)
+        # acc_embedding = sum([r.compare_num_pred_with_embedding(X_np_dev[i], D_np_dev[i]) for i in range(len(X_np_dev))]) / len(X_np_dev)
+        # print('Number prediction accuracy with embedding:', acc_embedding)
