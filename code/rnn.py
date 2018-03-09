@@ -54,6 +54,8 @@ class RNN(object):
         self.deltaV = np.zeros((self.hidden_dims, self.vocab_size))
         self.deltaW = np.zeros((self.out_vocab_size, self.hidden_dims))
 
+        self.words_embeddings = np.zeros((self.out_vocab_size, self.hidden_dims+1))
+
     def apply_deltas(self, learning_rate):
         '''
         update the RNN's weight matrices with corrections accumulated over some training instances
@@ -383,8 +385,6 @@ class RNN(object):
         ##########################
         # --- your code here --- #
         y , s = self.predict(x)
-        # s (x+1, hidden)
-        y = softmax_embedding(s[len(x)-1,:], embedding_path)
         return 1 if y[-1, d[0]] > y[-1, d[1]] else 0
         ##########################
 
@@ -397,23 +397,28 @@ class RNN(object):
         for line in f:
             splitLine = line.split()
             word = splitLine[0]
-
             if word in word_to_num:
                 embedding = [float(val) for val in splitLine[1:]]
-                words_embeddings.append(word_to_num[word] + embedding)
+                words_embeddings.append([word_to_num[word]] + embedding)
 
         words_embeddings.append(word_to_num['UNK'] + np.random.rand(len(embedding)))
         words_embeddings = np.array(words_embeddings)
+        print('debug ', words_embeddings.shape )
+        # sort the array according to word index
         words_embeddings = words_embeddings[words_embeddings[:,0].argsort()]
         print(words_embeddings.shape," embedding loaded!")
         return words_embeddings
 
+    def compare_num_pred_with_embedding(self, x, d):
+        '''use pretrained embedding for softmax
+        x        list of words, as indices, e.g.: [0, 4, 2]
+        d        the desired verb and its (re)inflected form (singular/plural), as indices, e.g.: [7, 8]
 
-
-
-    def softmax_embedding(self, hidden_state, embedding_path):
-
-
+        return 1 if p(d[0]) > p(d[1]), 0 otherwise
+        '''
+        _ , s = self.predict(x) # s shape (x+1, hidden)
+        y = softmax(self.words_embeddings[:,1:].dot(s[len(x)-1,:]))
+        return 1 if y[-1, d[0]] > y[-1, d[1]] else 0
 
     def compute_acc_lmnp(self, X_dev, D_dev):
         '''
@@ -983,5 +988,8 @@ if __name__ == "__main__":
         D_np_dev = D_np_dev[:dev_size]
 
         np_acc = r.compute_acc_lmnp(X_np_dev, D_np_dev)
-
         print('Number prediction accuracy:', np_acc)
+
+        # r.words_embeddings = r.load_embeddings(data_folder + "/glove.6B.50d.txt", word_to_num)
+        # acc_embedding = sum([r.compare_num_pred_with_embedding(X_np_dev[i], D_np_dev[i]) for i in range(len(X_np_dev))]) / len(X_np_dev)
+        # print('Number prediction accuracy with embedding:', acc_embedding)
