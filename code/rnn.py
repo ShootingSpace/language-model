@@ -54,6 +54,9 @@ class RNN(object):
         self.deltaV = np.zeros((self.hidden_dims, self.vocab_size))
         self.deltaW = np.zeros((self.out_vocab_size, self.hidden_dims))
 
+        # for data analysis
+        self.stats = []
+
     def apply_deltas(self, learning_rate):
         '''
         update the RNN's weight matrices with corrections accumulated over some training instances
@@ -383,7 +386,10 @@ class RNN(object):
         ##########################
         # --- your code here --- #
         y , _ = self.predict(x)
-        return 1 if y[-1, d[0]] > y[-1, d[1]] else 0
+        predict = 1 if y[-1, d[0]] > y[-1, d[1]] else 0
+        self.stats.append([len(x), predict])
+        return predict
+        # return 1 if y[-1, d[0]] > y[-1, d[1]] else 0
         ##########################
 
     def compute_acc_lmnp(self, X_dev, D_dev):
@@ -887,7 +893,7 @@ if __name__ == "__main__":
 
         ##########################
         # --- your code here --- #
-        hyper_params = [[25, 50], [0, 2, 5], [0.5, 0.1, 0.05]]
+        hyper_params = [[100], [5], [0.5], [50]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))
@@ -899,9 +905,11 @@ if __name__ == "__main__":
             hdim = hyper_param[0]
             lookback = hyper_param[1]
             lr = hyper_param[2]
+            batch_size = hyper_param[3]
             rnn = RNN(vocab_size, hdim, vocab_size)
             run_loss = rnn.train_np(X_train, D_train, X_dev, D_dev, epochs = epochs,
-                                  learning_rate = lr, back_steps = lookback)
+                                  learning_rate = lr, back_steps = lookback,
+                                  batch_size = batch_size)
             if min_loss > run_loss:
                 min_loss = run_loss
                 best_model = rnn
@@ -917,6 +925,7 @@ if __name__ == "__main__":
                                 best_param[0], best_param[1], best_param[2], acc))
 
         logging.info("Accuracy: %.03f" % acc)
+        logging.info("="*10)
         ##########################
 
         # print("Accuracy: %.03f" % acc)
@@ -946,7 +955,7 @@ if __name__ == "__main__":
         word_to_num = invert_dict(num_to_word)
 
         # Load the dev set (for tuning hyperparameters)
-        docs = load_lm_np_dataset(data_folder + '/wiki-dev.txt')
+        docs, span = load_lm_np_dataset(data_folder + '/wiki-dev.txt')
         S_np_dev = docs_to_indices(docs, word_to_num, 1, 0)
         X_np_dev, D_np_dev = seqs_to_lmnpXY(S_np_dev)
 
@@ -954,5 +963,7 @@ if __name__ == "__main__":
         D_np_dev = D_np_dev[:dev_size]
 
         np_acc = r.compute_acc_lmnp(X_np_dev, D_np_dev)
+        np.savetxt('stats.csv', np.array(r.stats), delimiter=',')
+        np.savetxt('span.csv', np.array(span), delimiter=',')
 
         print('Number prediction accuracy:', np_acc)

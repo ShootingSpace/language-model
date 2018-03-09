@@ -39,6 +39,10 @@ def load_np_dataset(fname):
 
 def load_lm_np_dataset(fname):
     sents = []
+    #############################################
+    # return the span between subj_idx & verb_idx
+    span = []
+    #############################################
     cnt = 0
     with open(fname) as f:
         for line in f:
@@ -51,7 +55,10 @@ def load_lm_np_dataset(fname):
             inf_verb = items[5]
             sent = items[0].split()[:verb_idx] + [verb, inf_verb]
             sents.append(sent)
-    return sents
+            ########################################
+            span.append(int(items[2]) - int(items[1]))
+            ########################################
+    return sents, span
 
 
 def pad_sequence(seq, left=1, right=1):
