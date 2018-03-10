@@ -22,6 +22,8 @@ class RNN(object):
         predict                ->    predict an output sequence for a given input sequence
         acc_deltas            ->    accumulate update weights for the RNNs weight matrices, standard Back Propagation
         acc_deltas_bptt        ->    accumulate update weights for the RNNs weight matrices, using Back Propagation Through Time
+        acc_deltas_np		->	accumulate update weights for the RNNs weight matrices, standard Back Propagation -- for number predictions
+		acc_deltas_bptt_np	->	accumulate update weights for the RNNs weight matrices, using Back Propagation Through Time -- for number predictions
         compute_loss         ->    compute the (cross entropy) loss between the desired output and predicted output for a given input sequence
         compute_mean_loss    ->    compute the average loss over all sequences in a corpus
         generate_sequence    ->    use the RNN to generate a new (unseen) sequnce
@@ -659,7 +661,7 @@ class RNN(object):
         t_start = time.time()
         loss_function = self.compute_loss_np
 
-        loss_sum = sum([len(d) for d in D_dev])
+        loss_sum = len(D_dev)
         initial_loss = sum([loss_function(X_dev[i], D_dev[i]) for i in range(len(X_dev))]) / loss_sum
         initial_acc = sum([self.compute_acc_np(X_dev[i], D_dev[i]) for i in range(len(X_dev))]) / len(X_dev)
 
@@ -800,7 +802,8 @@ if __name__ == "__main__":
         change this to different values, or use it to get you started with your own testing class
         '''
         epochs = int(sys.argv[2])
-        train_size = 25000
+        save_models = int(sys.argv[3])
+        train_size = 1000
         dev_size = 1000
         vocab_size = 2000
 
@@ -861,27 +864,25 @@ if __name__ == "__main__":
                                   learning_rate = lr, back_steps = lookback,
                                   batch_size = batch_size)
 
-            # Load the test set
-            docs = load_lm_dataset(data_folder + '/wiki-test.txt')
-            S_test = docs_to_indices(docs, word_to_num, 1, 1)
-            X_test, D_test = seqs_to_lmXY(S_test)
-            loss = rnn.compute_mean_loss(X_test, D_test)
-            logging.info("Mean loss on the full test set: {}".format(loss))
+        # Load the test set
+        docs = load_lm_dataset(data_folder + '/wiki-test.txt')
+        S_test = docs_to_indices(docs, word_to_num, 1, 1)
+        X_test, D_test = seqs_to_lmXY(S_test)
+        loss = rnn.compute_mean_loss(X_test, D_test)
+        logging.info("Mean loss on the full test set: {}".format(loss))
+
+        if save_models:
             np.save('rnn.U.npy', rnn.U)
             np.save('rnn.V.npy', rnn.V)
             np.save('rnn.W.npy', rnn.W)
-            adjusted_loss = adjust_loss(loss, fraction_lost, q, mode='basic')
-            logging.info("Unadjusted: %.03f" % np.exp(loss))
-            logging.info("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
-            logging.info("="*10)
+
+        logging.info("Unadjusted: %.03f" % np.exp(loss))
+
+        adjusted_loss = adjust_loss(loss, fraction_lost, q, mode='basic')
+        logging.info("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
+        logging.info("="*10)
 
         ##########################
-    # adjusted_loss = -1
-    #
-    # print("Unadjusted: %.03f" % np.exp(run_loss))
-    # print("Adjusted for missing vocab: %.03f" % np.exp(adjusted_loss))
-
-
 
     if mode == "train-np":
         '''
@@ -921,12 +922,12 @@ if __name__ == "__main__":
         S_dev = docs_to_indices(sents, word_to_num, 0, 0)
         X_dev, D_dev = seqs_to_npXY(S_dev)
 
-        X_dev = X_dev[:train_size]
-        D_dev = D_dev[:train_size]
+        X_dev = X_dev[:dev_size]
+        D_dev = D_dev[:dev_size]
 
         ##########################
         # --- your code here --- #
-        hyper_params = [[100], [5], [0.5], [50]]
+        hyper_params = [[50], [5], [0.5, 0.1], [50]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))
@@ -988,7 +989,7 @@ if __name__ == "__main__":
         word_to_num = invert_dict(num_to_word)
 
         # Load the dev set (for tuning hyperparameters)
-        docs, span = load_lm_np_dataset(data_folder + '/wiki-dev.txt')
+        docs, dev_span = load_lm_np_dataset(data_folder + '/wiki-dev.txt')
         S_np_dev = docs_to_indices(docs, word_to_num, 1, 0)
         X_np_dev, D_np_dev = seqs_to_lmnpXY(S_np_dev)
 
@@ -996,10 +997,21 @@ if __name__ == "__main__":
         D_np_dev = D_np_dev[:dev_size]
 
         np_acc = r.compute_acc_lmnp(X_np_dev, D_np_dev)
-        np.savetxt('stats.csv', np.array(r.stats), delimiter=',')
-        np.savetxt('span.csv', np.array(span), delimiter=',')
+        dev_span = np.concatenate((np.array(r.stats), np.array(dev_span, ndmin=2).T), axis = 1)
+        np.savetxt('dev_span.csv', np.array(dev_span), delimiter=',')
 
         print('Number prediction accuracy:', np_acc)
+
+        # load test data
+        sents, test_span = load_lm_np_dataset(data_folder + '/wiki-test.txt')
+        S_np_test = docs_to_indices(sents, word_to_num, 0, 0)
+        X_np_test, D_np_test = seqs_to_lmnpXY(S_np_test)
+
+        r.stats = [] # reset
+        np_acc_test = r.compute_acc_lmnp(X_np_test, D_np_test)
+        test_span = np.concatenate((np.array(r.stats), np.array(test_span, ndmin=2).T), axis = 1)
+        np.savetxt('test_span.csv', np.array(test_span), delimiter=',')
+        print('Number prediction accuracy on test set:', np_acc_test)
 
         # r.words_embeddings = r.load_embeddings(data_folder + "/glove.6B.50d.txt", word_to_num)
         # acc_embedding = sum([r.compare_num_pred_with_embedding(X_np_dev[i], D_np_dev[i]) for i in range(len(X_np_dev))]) / len(X_np_dev)
