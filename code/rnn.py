@@ -847,7 +847,7 @@ if __name__ == "__main__":
             the look-back in backpropagation (at least: 0, 2, 5),
             and learning rate (at least: 0.5, 0.1, 0.05).
         """
-        hyper_params = [[50], [0], [0.5], [50]]
+        hyper_params = [[50], [0], [0.5], [32]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))
@@ -927,7 +927,7 @@ if __name__ == "__main__":
 
         ##########################
         # --- your code here --- #
-        hyper_params = [[50], [5], [0.5, 0.1], [50]]
+        hyper_params = [[100], [5], [0.5,], [50]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))

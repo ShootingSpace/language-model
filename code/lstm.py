@@ -20,37 +20,144 @@ import mxnet as mx
 from mxnet import gluon, autograd
 from mxnet.gluon import nn, rnn
 
-'''Define classes for indexing words of the input document,
-   The Dictionary class is used by the Corpus class to
-   index the words of the input document.
+'''Define classes for indexing words of the input document
 '''
 class Corpus(object):
-    def __init__(self, vocab_size=2000, train_size=1000, dev_size=1000, path):
-        self.word2idx = {}
-        self.idx2word = {}
+    def __init__(self, vocab_size, vocab_file):
         self.vocab_size = vocab_size
-        self.train_size = train_size
-        self.dev_size = dev_size
-        self.vocab = self.build_vocab(path + 'vocab.wiki.txt')
-        self.X_train, self.D_train = self.tokenize(path + 'wiki-train.txt', self.train_size)
-        self.X_dev, self.D_dev = self.tokenize(path + 'wiki-dev.txt', self.dev_size)
-        self.X_test, self.D_test = self.tokenize(path + 'wiki-test.txt')
+        self.word2idx, self.idx2word = self.build_vocab(vocab_file)
 
-    def build_vocab(self, path):
+        # self.train_size = train_size
+        # self.dev_size = dev_size
+        # self.vocab = self.build_vocab(path + 'vocab.wiki.txt')
+        # self.X_train, self.D_train = self.tokenize(path + 'wiki-train.txt', self.train_size)
+        # self.X_dev, self.D_dev = self.tokenize(path + 'wiki-dev.txt', self.dev_size)
+        # self.X_test, self.D_test = self.tokenize(path + 'wiki-test.txt')
+
+    def build_vocab(self, vocab_file):
         '''build the vocabulary from given file'''
-        vocab = pd.read_table(path + "/vocab.wiki.txt", header=None, sep="\s+", index_col=0, names=['count', 'freq'], )
-        self.idx2word = dict(enumerate(vocab.index[:self.vocab_size]))
-        self.word2idx = invert_dict(self.idx2word)
+        vocab = pd.read_table(vocab_file, header=None, sep="\s+", index_col=0, names=['count', 'freq'], )
+        idx2word = dict(enumerate(vocab.index[:self.vocab_size]))
+        word2idx = invert_dict(idx2word)
+        return word2idx, idx2word
 
     def tokenize(self, path, size=None):
         """Tokenizes a text file."""
         assert os.path.exists(path)
         # Loads the context sentence by sentence
-        corpus = load_lm_dataset(path)
-        context = docs_to_indices(corpus, self.word2idx, 1, 1)
-        X, D = seqs_to_lmXY(context)
-        X, D = mx.nd.array(X, dtype='int32'), mx.nd.array(D, dtype='int32')
+        corpus = load_lm_dataset(path) # (list of list of str) Each sentence should be a list of string tokens.
+        corpus_indexing, _ = self.encode_sentences(corpus, vocab=self.word2idx,
+                                                     unknown_token='UNK')
         if size:
-            return X[:size], D[:size]
+            return corpus_indexing[:size]
         else:
-            return X, D
+            return corpus_indexing
+
+    def encode_sentences(self, sentences, vocab=None, invalid_label=-1,
+                         invalid_key='\n', start_label=0, unknown_token=None) :
+        """Encode sentences and (optionally) build a mapping
+        from string tokens to integer indices. Unknown keys
+        will be added to vocabulary.
+
+        Parameters
+        ----------
+        sentences : list of list of str
+            A list of sentences to encode. Each sentence
+            should be a list of string tokens.
+        vocab : None or dict of str -> int
+            Optional input Vocabulary
+        invalid_label : int, default -1
+            Index for invalid token, like <end-of-sentence>
+        invalid_key : str, default '\\n'
+            Key for invalid token. Use '\\n' for end
+            of sentence by default.
+        start_label : int
+            lowest index.
+
+        Returns
+        -------
+        result : list of list of int
+            encoded sentences
+        vocab : dict of str -> int
+            result vocabulary
+        """
+        idx = start_label
+        if vocab is None:
+            vocab = {invalid_key: invalid_label}
+            new_vocab = True
+        elif unknown_token:
+            new_vocab = True
+        else:
+            new_vocab = False
+        res = []
+
+        for sent in sentences:
+            coded = []
+            for word in sent:
+                if word not in vocab:
+                    assert new_vocab, "Unknown token %s"%word
+                    if idx == invalid_label:
+                        idx += 1
+                    if unknown_token:
+                        word = unknown_token
+                    vocab[word] = idx
+                    idx += 1
+                coded.append(vocab[word])
+            res.append(coded)
+        return res, vocab
+        # context = docs_to_indices(corpus, self.word2idx, 1, 1)
+        # X, D = seqs_to_lmXY(context)
+        # X, D = mx.nd.array(X, dtype=object), mx.nd.array(D, dtype=object)
+        # if size:
+        #     return X[:size], D[:size]
+        # else:
+        #     return X, D
+
+''' Provide an exposition of different RNN models with gluon
+    Based on the gluon.Block class.
+'''
+class RNNModel(gluon.Block):
+    """A model with
+    an encoder: if num_embed = vocab_size, then it is one hot encoding
+    recurrent layer,
+    a decoder.
+    """
+    def __init__(self, mode, vocab_size, num_embed, num_hidden,
+                 num_layers, dropout, tie_weights, **kwargs):
+        super(RNNModel, self).__init__(**kwargs)
+        with self.name_scope():
+            self.drop = nn.Dropout(dropout)
+            self.encoder = nn.Embedding(vocab_size, num_embed,
+                                        weight_initializer = mx.init.Uniform(0.1))
+            if mode == 'rnn_relu':
+                self.rnn = rnn.RNN(num_hidden, num_layers, activation='relu',
+                                   dropout=dropout,
+                                   input_size=num_embed)
+            elif mode == 'rnn_tanh':
+                self.rnn = rnn.RNN(num_hidden, num_layers, dropout=dropout,
+                                   input_size=num_embed)
+            elif mode == 'lstm':
+                self.rnn = rnn.LSTM(num_hidden, num_layers, dropout=dropout,
+                                    input_size=num_embed)
+            elif mode == 'gru':
+                self.rnn = rnn.GRU(num_hidden, num_layers, dropout=dropout,
+                                   input_size=num_embed)
+            else:
+                raise ValueError("Invalid mode %s. Options are rnn_relu, "
+                                 "rnn_tanh, lstm, and gru"%mode)
+            if tie_weights:
+                self.decoder = nn.Dense(vocab_size, in_units = num_hidden,
+                                        params = self.encoder.params)
+            else:
+                self.decoder = nn.Dense(vocab_size, in_units = num_hidden)
+            self.num_hidden = num_hidden
+
+    def forward(self, inputs, hidden):
+        emb = self.drop(self.encoder(inputs))
+        output, hidden = self.rnn(emb, hidden)
+        output = self.drop(output)
+        decoded = self.decoder(output.reshape((-1, self.num_hidden)))
+        return decoded, hidden
+
+    def begin_state(self, *args, **kwargs):
+        return self.rnn.begin_state(*args, **kwargs)
