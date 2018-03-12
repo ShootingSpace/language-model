@@ -55,21 +55,24 @@ class Corpus(object):
                                                      unknown_token='UNK')
 
         print('Load {} data'.format(path))
-        X_train, D_train = self.seqs_to_lmXY(corpus_indexing)
+        X_D_train = self.seqs_to_lmXY(corpus_indexing)
         print('Complete one hot making')
 
         # corpus_indexing = self.make_fix_length_sequence(corpus_indexing[0], sequence_length)
-        return X_train, D_train
+        return X_D_train
 
     def seqs_to_lmXY(self, seqs):
         print('Make X and D in one hot representation')
-        X, Y = zip(*[self.offset_seq(s) for s in seqs])
-        return np.array(X, dtype=object), np.array(Y, dtype=object)
+        ''' list of tuple'''
+        # X, Y = zip(*[self.offset_seq(s) for s in seqs])
+        data_label = [self.offset_seq(s) for s in seqs]
+        return data_label
+        # return np.array(X, dtype=object), np.array(Y, dtype=object)
 
     def offset_seq(self, seq):
         '''return one hot  '''
         one_hot_vectors = mx.ndarray.one_hot(mx.nd.array(seq), self.vocab_size)
-        return one_hot_vectors[:-1], one_hot_vectors[1:]
+        return (one_hot_vectors[:-1], one_hot_vectors[1:])
 
     def load_dataset(self, fname, size=None):
         corpus = []
@@ -165,8 +168,7 @@ class Corpus(object):
 '''
 class RNNModel(gluon.Block):
     """A model with
-    an encoder: if num_embed = vocab_size, then it is one hot encoding
-    recurrent layer,
+    an encoder
     a decoder.
     """
     def __init__(self, mode, vocab_size, num_embed, num_hidden,
@@ -174,8 +176,8 @@ class RNNModel(gluon.Block):
         super(RNNModel, self).__init__(**kwargs)
         with self.name_scope():
             self.drop = nn.Dropout(dropout)
-            self.encoder = nn.Embedding(vocab_size, num_embed,
-                                        weight_initializer = mx.init.Uniform(0.1))
+            # self.encoder = nn.Embedding(vocab_size, num_embed,
+            #                             weight_initializer = mx.init.Uniform(0.1))
             if mode == 'rnn_relu':
                 self.rnn = rnn.RNN(num_hidden, num_layers, activation='relu',
                                    dropout=dropout,
@@ -192,16 +194,13 @@ class RNNModel(gluon.Block):
             else:
                 raise ValueError("Invalid mode %s. Options are rnn_relu, "
                                  "rnn_tanh, lstm, and gru"%mode)
-            if tie_weights:
-                self.decoder = nn.Dense(vocab_size, in_units = num_hidden,
-                                        params = self.encoder.params)
-            else:
-                self.decoder = nn.Dense(vocab_size, in_units = num_hidden)
+            self.decoder = nn.Dense(vocab_size, in_units = num_hidden)
             self.num_hidden = num_hidden
 
     def forward(self, inputs, hidden):
-        emb = self.drop(self.encoder(inputs))
-        output, hidden = self.rnn(emb, hidden)
+        # emb = self.drop(self.encoder(inputs))
+        # output, hidden = self.rnn(emb, hidden)
+        output, hidden = self.rnn(inputs, hidden)
         output = self.drop(output)
         decoded = self.decoder(output.reshape((-1, self.num_hidden)))
         return decoded, hidden

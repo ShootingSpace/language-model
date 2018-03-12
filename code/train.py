@@ -6,14 +6,16 @@ from mxnet import gluon, autograd
 from lstm import RNNModel, Corpus
 import numpy as np
 import bisect
+import random
+
 parser = argparse.ArgumentParser(description='MXNet Autograd RNN/LSTM Language Model.')
 parser.add_argument('--model', type=str, default='lstm',
                     help='type of recurrent net (rnn_tanh, rnn_relu, lstm, gru)')
 parser.add_argument('--data_folder', type=str, default='data/', help='folder that store data')
 parser.add_argument('--vocab_size', type=int, default=2000, help='vocab_size')
 parser.add_argument('--sequence_length', type=int, default=60, help='sequence length for each inputs')
-parser.add_argument('--train_size', type=int, default=5, help='train_size')
-parser.add_argument('--dev_size', type=int, default=5, help='dev_size')
+parser.add_argument('--train_size', type=int, default=100, help='train_size')
+parser.add_argument('--dev_size', type=int, default=100, help='dev_size')
 parser.add_argument('--num_embed', type=int, default=2000, help='size of word embeddings')
 parser.add_argument('--num_hidden', type=int, default=50, help='number of hidden units per layer')
 parser.add_argument('--num_layers', type=int, default=1, help='number of layers')
@@ -30,7 +32,7 @@ parser.add_argument('--dropout', type=float, default=0,
 parser.add_argument('--tied', action='store_true',
                     help='tie the word embedding and softmax weights')
 parser.add_argument('--cuda', action='store_true', help='Whether to use gpu')
-parser.add_argument('--log-interval', type=int, default=200, metavar='N',
+parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='report interval')
 parser.add_argument('--save', type=str, default='model.params',
                     help='path to save the final model')
@@ -46,86 +48,83 @@ helper functions that will be used during model training and evaluation.'''
 def get_batch(source, i):
     pass
 
-def detach(hidden):
-    pass
-
 def eval(data_source):
     total_L = 0.0
     ntotal = 0
-    hidden = model.begin_state(func = mx.nd.zeros, batch_size = args_batch_size, ctx=context)
-    for i in range(0, data_source.shape[0] - 1, args_bptt):
-        data, target = get_batch(data_source, i)
-        output, hidden = model(data, hidden)
-        L = loss(output, target)
-        total_L += mx.nd.sum(L).asscalar()
-        ntotal += L.size
-    return total_L / ntotal
+    hidden = model.begin_state(func = mx.nd.zeros, batch_size = args.batch_size, ctx=context)
+
+    data, label = data_source[0], data_source[1]
+    output, hidden = model(data, hidden)
+    L = loss(data, label)
+    L = mx.nd.sum(L).asscalar()
+    ntotal += L.size
+
+    return L / L.size
+
+def detach(hidden):
+    if isinstance(hidden, (tuple, list)):
+        hidden = [i.detach() for i in hidden]
+    else:
+        hidden = hidden.detach()
+    return hidden
+
 
 def train():
     '''monitor the model performance on the training, validation,
     and testing data sets over iterations.
     '''
     best_val = float("Inf")
+
+    np.random.seed(2018)
+
+
     for epoch in range(args.epochs):
         total_L = 0.0
         start_time = time.time()
         hidden = model.begin_state(func = mx.nd.zeros, ctx = context)
-        for ibatch, i in enumerate(range(0, X_train.shape[0] - 1, args.bptt)):
-            data, target = get_batch(train_data, i)
+
+        random.shuffle(X_D_train)
+        generate_data = ((x,y) for x,y in X_D_train)
+        permutation = np.random.permutation(range(args.train_size))
+
+        model.collect_params().zeros_grads()
+        batch_num = args.train_size / args.batch_size
+
+        for ibatch in batch_num:
+            '''One mini batch'''
             hidden = detach(hidden)
-            with autograd.record():
-                output, hidden = model(data, hidden)
-                L = loss(output, target)
-                L.backward()
-
-            grads = [i.grad(context) for i in model.collect_params().values()]
-            # Here gradient is for the whole batch.
-            # So we multiply max_norm by batch_size and bptt size to balance it.
-            gluon.utils.clip_global_norm(grads, args_clip * args_bptt * args_batch_size)
-
-            trainer.step(args_batch_size)
-            total_L += mx.nd.sum(L).asscalar()
-
+            for j in args.batch_size:
+                with autograd.record():
+                    data, label = generate_data.next()
+                    output, hidden = model(data, hidden)
+                    L = loss(data, label)
+                    L.backward()
+                total_L += mx.nd.sum(L).asscalar()
+            trainer.step()
             if ibatch % args_log_interval == 0 and ibatch > 0:
                 cur_L = total_L / args_bptt / args_batch_size / args_log_interval
                 print('[Epoch %d Batch %d] loss %.2f, perplexity %.2f' % (
                     epoch + 1, ibatch, cur_L, math.exp(cur_L)))
                 total_L = 0.0
 
-        val_L = eval(val_data)
-
+        val_L = eval(X_D_dev)
         print('[Epoch %d] time cost %.2fs, validation loss %.2f, validation perplexity %.2f' % (
             epoch + 1, time.time() - start_time, val_L, math.exp(val_L)))
 
         if val_L < best_val:
             best_val = val_L
-            test_L = eval(test_data)
+            # test_L = eval(test_data)
             model.save_params(args_save)
-            print('test loss %.2f, test perplexity %.2f' % (test_L, math.exp(test_L)))
+            print('DEV loss %.2f, DEV perplexity %.2f' % (val_L, math.exp(val_L)))
         else:
-            args_lr = args_lr * 0.25
+            # args_lr = args_lr * 0.25
+            args_lr = args_lr/((epoch+0.0+args.anneal)/args.anneal)
             trainer._init_optimizer('sgd',
                                     {'learning_rate': args_lr,
                                      'momentum': 0,
                                      'wd': 0})
-            model.load_params(args_save, context)
+            model.load_params(args.save, context)
 
-def sym_gen(seq_len):
-    data = mx.sym.Variable('data')
-    label = mx.sym.Variable('softmax_label')
-    embed = mx.sym.Embedding(data=data, input_dim=args.vocab_size,
-                             output_dim=args.num_embed, name='embed')
-
-    stack.reset()
-    outputs, states = stack.unroll(seq_len, inputs=embed, merge_outputs=True)
-
-    pred = mx.sym.Reshape(outputs, shape=(-1, args.num_hidden))
-    pred = mx.sym.FullyConnected(data=pred, num_hidden=args.num_embed, name='pred')
-
-    label = mx.sym.Reshape(label, shape=(-1,))
-    pred = mx.sym.SoftmaxOutput(data=pred, label=label, name='softmax')
-
-    return pred, ('data',), ('softmax_label',)
 
 if __name__ == '__main__':
     if args.cuda:
@@ -148,14 +147,13 @@ if __name__ == '__main__':
     '''
     # buckets for batch training
     # buckets = [ 10, 20, 30, 40, 50, 60]
-    X_train, D_train = corpus.tokenize(args.data_folder + 'wiki-train.txt',
+    X_D_train = corpus.tokenize(args.data_folder + 'wiki-train.txt',
                             args.sequence_length, args.train_size)
-    X_dev, D_dev   = corpus.tokenize(args.data_folder + 'wiki-dev.txt',
+    X_D_dev   = corpus.tokenize(args.data_folder + 'wiki-dev.txt',
                             args.sequence_length, args.dev_size)
-    # X_test, D_test  = corpus.tokenize(args.data_folder + 'wiki-test.txt',
+    # X_D_test  = corpus.tokenize(args.data_folder + 'wiki-test.txt',
     #                         args.sequence_length)
 
-    print(X_train.shape)
     # train_data  = mx.rnn.BucketSentenceIter(train_corpus_indexing, args.batch_size, data_name='train_data')
     # dev_data    = mx.rnn.BucketSentenceIter(dev_corpus_indexing, args.batch_size, data_name='dev_data')
     # test_data   = mx.rnn.BucketSentenceIter(test_corpus_indexing, args.batch_size, data_name='test_data')
@@ -164,9 +162,17 @@ if __name__ == '__main__':
     '''Build the model, initialize model parameters,
     and configure the optimization algorithms for training the RNN model.'''
 
-    model = RNNModel(args.model, args.vocab_size, args_emsize, args_nhid,
-                           args_nlayers, args_dropout, args_tied)
+    model = RNNModel(args.model, args.vocab_size, args.num_embed, args.num_hidden,
+                           args.num_layers, args.dropout, args.tied)
     model.collect_params().initialize(mx.init.Xavier(), ctx=context)
+    for p in model.collect_params():
+        print(type(p))
+        p.grad_req = 'add'
     trainer = gluon.Trainer(model.collect_params(), 'sgd',
                             {'learning_rate': args.lr, 'momentum': 0, 'wd': 0})
     loss = gluon.loss.SoftmaxCrossEntropyLoss()
+
+    train()
+    model.load_params(args.save, context)
+    test_L = eval(X_D_test)
+    print('Best test loss %.2f, test perplexity %.2f'%(test_L, math.exp(test_L)))
