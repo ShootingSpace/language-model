@@ -41,17 +41,64 @@ class Corpus(object):
         word2idx = invert_dict(idx2word)
         return word2idx, idx2word
 
-    def tokenize(self, path, size=None):
-        """Tokenizes a text file."""
+    def tokenize(self, path, sequence_length, size=None):
+        """Tokenizes a text file.
+           return one hot representation of each token
+        """
         assert os.path.exists(path)
         # Loads the context sentence by sentence
-        corpus = load_lm_dataset(path) # (list of list of str) Each sentence should be a list of string tokens.
+        if size:
+            corpus = self.load_dataset(path, size) # (list of list of str) string tokens.
+        else:
+            corpus = self.load_dataset(path)
         corpus_indexing, _ = self.encode_sentences(corpus, vocab=self.word2idx,
                                                      unknown_token='UNK')
-        if size:
-            return corpus_indexing[:size]
-        else:
-            return corpus_indexing
+
+        print('Load {} data'.format(path))
+        X_train, D_train = self.seqs_to_lmXY(corpus_indexing)
+        print('Complete one hot making')
+
+        # corpus_indexing = self.make_fix_length_sequence(corpus_indexing[0], sequence_length)
+        return X_train, D_train
+
+    def seqs_to_lmXY(self, seqs):
+        print('Make X and D in one hot representation')
+        X, Y = zip(*[self.offset_seq(s) for s in seqs])
+        return np.array(X, dtype=object), np.array(Y, dtype=object)
+
+    def offset_seq(self, seq):
+        '''return one hot  '''
+        one_hot_vectors = mx.ndarray.one_hot(mx.nd.array(seq), self.vocab_size)
+        return one_hot_vectors[:-1], one_hot_vectors[1:]
+
+    def load_dataset(self, fname, size=None):
+        corpus = []
+        cnt = 0
+        with open(fname) as f:
+            for line in f:
+                if cnt == 0:
+                    cnt += 1
+                    continue
+                items = line.strip().split('\t')
+                # corpus += self.pad_sequence(items[0].split(), left=1, right=1)
+                corpus.append(items[0].split())
+                if size and cnt == size:
+                    break
+                cnt += 1
+
+        return corpus
+
+    def make_fix_length_sequence(self, corpus, sequence_length):
+        '''transfer the whole sequence into matrix'''
+        mod = len(corpus) % sequence_length
+        rows = int(len(corpus)/sequence_length+1)
+        corpus += [-1]*(sequence_length-mod)
+        corpus = np.reshape(corpus, (rows, sequence_length))
+        assert corpus.size == rows*sequence_length
+        return corpus
+
+    def pad_sequence(self, seq, left=1, right=1):
+        return left*["<s>"] + seq + right*["</s>"] #+ ['\n']
 
     def encode_sentences(self, sentences, vocab=None, invalid_label=-1,
                          invalid_key='\n', start_label=0, unknown_token=None) :
