@@ -72,7 +72,7 @@ class Corpus(object):
     def offset_seq(self, seq):
         '''return one hot  '''
         one_hot_vectors = mx.ndarray.one_hot(mx.nd.array(seq), self.vocab_size)
-        return (one_hot_vectors[:-1], one_hot_vectors[1:])
+        return (one_hot_vectors[:-1], seq[1:])
 
     def load_dataset(self, fname, size=None):
         corpus = []

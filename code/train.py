@@ -25,7 +25,8 @@ parser.add_argument('--anneal', type=float, default=5,
                     after each epoch')
 parser.add_argument('--clip', type=float, default=0.2, help='gradient clipping')
 parser.add_argument('--epochs', type=int, default=30, help='upper epoch limit')
-parser.add_argument('--batch_size', type=int, default=50, metavar='N', help='batch size')
+parser.add_argument('--batch_size', type=int, default=1, metavar='N', help='batch size')
+parser.add_argument('--acc_grad_size', type=int, default=50, metavar='N', help='accumulate grad size')
 parser.add_argument('--bptt', type=int, default=0, help='sequence length')
 parser.add_argument('--dropout', type=float, default=0,
                     help='dropout applied to layers (0 = no dropout)')
@@ -53,13 +54,17 @@ def eval(data_source):
     ntotal = 0
     hidden = model.begin_state(func = mx.nd.zeros, batch_size = args.batch_size, ctx=context)
 
-    data, label = data_source[0], data_source[1]
-    output, hidden = model(data, hidden)
-    L = loss(data, label)
-    L = mx.nd.sum(L).asscalar()
-    ntotal += L.size
-
-    return L / L.size
+    data, label = zip(*data_source)
+    data = mx.nd.array(data)
+    label = mx.nd.array(label)
+    for i in range(args.dev_size):
+        data  = mx.nd.reshape(data,(data.shape[0],args.batch_size,data.shape[1]))
+        output, hidden = model(data, hidden)
+        L = loss(data, label)
+        total_L += mx.nd.sum(L).asscalar()
+        ntotal += L.size
+    assert ntotal == args.dev_size
+    return total_L / ntotal
 
 def detach(hidden):
     if isinstance(hidden, (tuple, list)):
@@ -81,28 +86,33 @@ def train():
     for epoch in range(args.epochs):
         total_L = 0.0
         start_time = time.time()
-        hidden = model.begin_state(func = mx.nd.zeros, ctx = context)
+        hidden = model.begin_state(batch_size=args.batch_size, func = mx.nd.zeros, ctx = context)
 
         random.shuffle(X_D_train)
         generate_data = ((x,y) for x,y in X_D_train)
         permutation = np.random.permutation(range(args.train_size))
 
-        model.collect_params().zeros_grads()
-        batch_num = args.train_size / args.batch_size
+        model.collect_params().zero_grad()
+        batch_num = args.train_size // args.acc_grad_size
 
-        for ibatch in batch_num:
+        for ibatch in range(batch_num):
             '''One mini batch'''
             hidden = detach(hidden)
-            for j in args.batch_size:
-                with autograd.record():
-                    data, label = generate_data.next()
+            with autograd.record():
+                for j in range(args.acc_grad_size):
+                    L_list = []
+                    data, label = next(generate_data)
+                    data  = mx.nd.reshape(data,(data.shape[0],args.batch_size,data.shape[1]))
+                    # label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
+                    label = mx.nd.array(label)
                     output, hidden = model(data, hidden)
-                    L = loss(data, label)
-                    L.backward()
+                    L_list.append(loss(output, label))
+                L = sum(L_list)
+                L.backward()
                 total_L += mx.nd.sum(L).asscalar()
-            trainer.step()
-            if ibatch % args_log_interval == 0 and ibatch > 0:
-                cur_L = total_L / args_bptt / args_batch_size / args_log_interval
+            trainer.step(args.acc_grad_size)
+            if ibatch % args.log_interval == 0 and ibatch > 0:
+                cur_L = total_L / args.bptt / args.acc_grad_size / args.log_interval
                 print('[Epoch %d Batch %d] loss %.2f, perplexity %.2f' % (
                     epoch + 1, ibatch, cur_L, math.exp(cur_L)))
                 total_L = 0.0
@@ -145,6 +155,7 @@ if __name__ == '__main__':
 
     '''prepare data, support buckets batches
     '''
+    print("prepare data, support buckets batches")
     # buckets for batch training
     # buckets = [ 10, 20, 30, 40, 50, 60]
     X_D_train = corpus.tokenize(args.data_folder + 'wiki-train.txt',
@@ -154,9 +165,9 @@ if __name__ == '__main__':
     # X_D_test  = corpus.tokenize(args.data_folder + 'wiki-test.txt',
     #                         args.sequence_length)
 
-    # train_data  = mx.rnn.BucketSentenceIter(train_corpus_indexing, args.batch_size, data_name='train_data')
-    # dev_data    = mx.rnn.BucketSentenceIter(dev_corpus_indexing, args.batch_size, data_name='dev_data')
-    # test_data   = mx.rnn.BucketSentenceIter(test_corpus_indexing, args.batch_size, data_name='test_data')
+    # train_data  = mx.rnn.BucketSentenceIter(train_corpus_indexing, args.acc_grad_size, data_name='train_data')
+    # dev_data    = mx.rnn.BucketSentenceIter(dev_corpus_indexing, args.acc_grad_size, data_name='dev_data')
+    # test_data   = mx.rnn.BucketSentenceIter(test_corpus_indexing, args.acc_grad_size, data_name='test_data')
 
 
     '''Build the model, initialize model parameters,
@@ -164,9 +175,10 @@ if __name__ == '__main__':
 
     model = RNNModel(args.model, args.vocab_size, args.num_embed, args.num_hidden,
                            args.num_layers, args.dropout, args.tied)
+
+    # Parameter initialization
     model.collect_params().initialize(mx.init.Xavier(), ctx=context)
-    for p in model.collect_params():
-        print(type(p))
+    for p in model.collect_params().values():
         p.grad_req = 'add'
     trainer = gluon.Trainer(model.collect_params(), 'sgd',
                             {'learning_rate': args.lr, 'momentum': 0, 'wd': 0})
