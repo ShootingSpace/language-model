@@ -8,6 +8,7 @@ import numpy as np
 import bisect
 import random
 from tqdm import tqdm
+from mxnet.gluon import nn, rnn
 
 parser = argparse.ArgumentParser(description='MXNet Autograd RNN/LSTM Language Model.')
 parser.add_argument('--model', type=str, default='lstm',
@@ -185,6 +186,12 @@ if __name__ == '__main__':
 
     '''Build the model, initialize model parameters,
     and configure the optimization algorithms for training the RNN model.'''
+
+    # model = nn.Sequential()
+    # # use model's name_scope to give child Blocks appropriate names.
+    # with model.name_scope():
+    #     model.add(rnn.LSTM(args.num_hidden, args.num_layers, dropout=args.dropout))
+    #     model.add(nn.Dense(args.vocab_size))
 
     model = RNNModel(args.model, args.vocab_size, args.num_embed, args.num_hidden,
                            args.num_layers, args.dropout, args.tied)

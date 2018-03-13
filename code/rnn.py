@@ -951,7 +951,7 @@ if __name__ == "__main__":
 
         # Load the test set
         sents = load_lm_dataset(data_folder + '/wiki-test.txt')
-        S_test = docs_to_indices(sents, word_to_num, 1, 1)
+        S_test = docs_to_indices(sents, word_to_num, 0, 0)
         X_test, D_test = seqs_to_lmXY(S_test)
         acc = best_model.compute_acc_lmnp(X_test, D_test)
         logging.info(
@@ -1004,7 +1004,7 @@ if __name__ == "__main__":
 
         # load test data
         sents, test_span = load_lm_np_dataset(data_folder + '/wiki-test.txt')
-        S_np_test = docs_to_indices(sents, word_to_num, 0, 0)
+        S_np_test = docs_to_indices(sents, word_to_num, 1, 0)
         X_np_test, D_np_test = seqs_to_lmnpXY(S_np_test)
 
         r.stats = [] # reset
