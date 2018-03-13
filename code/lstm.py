@@ -56,13 +56,11 @@ class Corpus(object):
 
         print('Load {} data'.format(path))
         X_D_train = self.seqs_to_lmXY(corpus_indexing)
-        print('Complete one hot making')
 
         # corpus_indexing = self.make_fix_length_sequence(corpus_indexing[0], sequence_length)
         return X_D_train
 
     def seqs_to_lmXY(self, seqs):
-        print('Make X and D in one hot representation')
         ''' list of tuple'''
         # X, Y = zip(*[self.offset_seq(s) for s in seqs])
         data_label = [self.offset_seq(s) for s in seqs]
@@ -70,9 +68,8 @@ class Corpus(object):
         # return np.array(X, dtype=object), np.array(Y, dtype=object)
 
     def offset_seq(self, seq):
-        '''return one hot  '''
-        one_hot_vectors = mx.ndarray.one_hot(mx.nd.array(seq), self.vocab_size)
-        return (one_hot_vectors[:-1], seq[1:])
+        # one_hot_vectors = mx.ndarray.one_hot(mx.nd.array(seq), self.vocab_size)
+        return (seq[:-1], seq[1:])
 
     def load_dataset(self, fname, size=None):
         corpus = []

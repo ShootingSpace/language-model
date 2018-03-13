@@ -7,6 +7,7 @@ from lstm import RNNModel, Corpus
 import numpy as np
 import bisect
 import random
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='MXNet Autograd RNN/LSTM Language Model.')
 parser.add_argument('--model', type=str, default='lstm',
@@ -27,7 +28,6 @@ parser.add_argument('--clip', type=float, default=0.2, help='gradient clipping')
 parser.add_argument('--epochs', type=int, default=30, help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=1, metavar='N', help='batch size')
 parser.add_argument('--acc_grad_size', type=int, default=50, metavar='N', help='accumulate grad size')
-parser.add_argument('--bptt', type=int, default=0, help='sequence length')
 parser.add_argument('--dropout', type=float, default=0,
                     help='dropout applied to layers (0 = no dropout)')
 parser.add_argument('--tied', action='store_true',
@@ -55,15 +55,20 @@ def eval(data_source):
     hidden = model.begin_state(func = mx.nd.zeros, batch_size = args.batch_size, ctx=context)
 
     data, label = zip(*data_source)
-    data = mx.nd.array(data)
-    label = mx.nd.array(label)
+
     for i in range(args.dev_size):
-        data  = mx.nd.reshape(data,(data.shape[0],args.batch_size,data.shape[1]))
-        output, hidden = model(data, hidden)
-        L = loss(data, label)
+        # make one hot vectors
+        idata = mx.ndarray.one_hot(mx.nd.array(data[i]), args.vocab_size)
+        ilabel = mx.ndarray.one_hot(mx.nd.array(label[i]), args.vocab_size)
+
+        idata = mx.nd.reshape(idata,(idata.shape[0],args.batch_size,idata.shape[1]))
+        ilabel = mx.nd.reshape(ilabel,(ilabel.shape[0],args.batch_size,ilabel.shape[1]))
+
+        output, hidden = model(idata, hidden)
+        L = loss(idata, ilabel)
         total_L += mx.nd.sum(L).asscalar()
         ntotal += L.size
-    assert ntotal == args.dev_size
+    # assert ntotal == args.dev_size, (ntotal)
     return total_L / ntotal
 
 def detach(hidden):
@@ -90,29 +95,42 @@ def train():
 
         random.shuffle(X_D_train)
         generate_data = ((x,y) for x,y in X_D_train)
-        permutation = np.random.permutation(range(args.train_size))
+        # permutation = np.random.permutation(range(args.train_size))
 
         model.collect_params().zero_grad()
         batch_num = args.train_size // args.acc_grad_size
 
-        for ibatch in range(batch_num):
+        for ibatch in tqdm(range(batch_num)):
             '''One mini batch'''
             hidden = detach(hidden)
+
             with autograd.record():
                 for j in range(args.acc_grad_size):
                     L_list = []
                     data, label = next(generate_data)
+                    # make one hot vectors
+                    data = mx.ndarray.one_hot(mx.nd.array(data), args.vocab_size)
+                    label = mx.ndarray.one_hot(mx.nd.array(label), args.vocab_size)
+
                     data  = mx.nd.reshape(data,(data.shape[0],args.batch_size,data.shape[1]))
-                    # label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
-                    label = mx.nd.array(label)
+                    label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
+                    # label = mx.nd.array(label)
                     output, hidden = model(data, hidden)
                     L_list.append(loss(output, label))
                 L = sum(L_list)
-                L.backward()
-                total_L += mx.nd.sum(L).asscalar()
+                # print(type(L), L)
+            # L.backward()
+            mx.autograd.backward(L_list)
+            total_L += mx.nd.sum(L).asscalar()
+
+            params = model.collect_params()
+            print('Grad ', model.decoder.weight.grad())
+            # print(params)
+            # print(params['rnnmodel0_dense0_weight'].data())
             trainer.step(args.acc_grad_size)
+
             if ibatch % args.log_interval == 0 and ibatch > 0:
-                cur_L = total_L / args.bptt / args.acc_grad_size / args.log_interval
+                cur_L = total_L / args.acc_grad_size / args.log_interval
                 print('[Epoch %d Batch %d] loss %.2f, perplexity %.2f' % (
                     epoch + 1, ibatch, cur_L, math.exp(cur_L)))
                 total_L = 0.0
@@ -124,13 +142,13 @@ def train():
         if val_L < best_val:
             best_val = val_L
             # test_L = eval(test_data)
-            model.save_params(args_save)
+            model.save_params(args.save)
             print('DEV loss %.2f, DEV perplexity %.2f' % (val_L, math.exp(val_L)))
         else:
-            # args_lr = args_lr * 0.25
-            args_lr = args_lr/((epoch+0.0+args.anneal)/args.anneal)
+            # args.lr = args.lr * 0.25
+            args.lr = args.lr/((epoch+0.0+args.anneal)/args.anneal)
             trainer._init_optimizer('sgd',
-                                    {'learning_rate': args_lr,
+                                    {'learning_rate': args.lr,
                                      'momentum': 0,
                                      'wd': 0})
             model.load_params(args.save, context)
@@ -155,7 +173,7 @@ if __name__ == '__main__':
 
     '''prepare data, support buckets batches
     '''
-    print("prepare data, support buckets batches")
+    print("prepare data" + '.'*10)
     # buckets for batch training
     # buckets = [ 10, 20, 30, 40, 50, 60]
     X_D_train = corpus.tokenize(args.data_folder + 'wiki-train.txt',
@@ -164,11 +182,6 @@ if __name__ == '__main__':
                             args.sequence_length, args.dev_size)
     # X_D_test  = corpus.tokenize(args.data_folder + 'wiki-test.txt',
     #                         args.sequence_length)
-
-    # train_data  = mx.rnn.BucketSentenceIter(train_corpus_indexing, args.acc_grad_size, data_name='train_data')
-    # dev_data    = mx.rnn.BucketSentenceIter(dev_corpus_indexing, args.acc_grad_size, data_name='dev_data')
-    # test_data   = mx.rnn.BucketSentenceIter(test_corpus_indexing, args.acc_grad_size, data_name='test_data')
-
 
     '''Build the model, initialize model parameters,
     and configure the optimization algorithms for training the RNN model.'''
@@ -182,7 +195,7 @@ if __name__ == '__main__':
         p.grad_req = 'add'
     trainer = gluon.Trainer(model.collect_params(), 'sgd',
                             {'learning_rate': args.lr, 'momentum': 0, 'wd': 0})
-    loss = gluon.loss.SoftmaxCrossEntropyLoss()
+    loss = gluon.loss.SoftmaxCrossEntropyLoss(sparse_label=False, batch_axis=1)
 
     train()
     model.load_params(args.save, context)
