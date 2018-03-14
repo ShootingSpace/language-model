@@ -101,40 +101,55 @@ def train():
         model.collect_params().zero_grad()
         batch_num = args.train_size // args.acc_grad_size
 
-        for ibatch in tqdm(range(batch_num)):
-            '''One mini batch'''
+        for i in range(args.train_size):
             hidden = detach(hidden)
-
             with autograd.record():
-                for j in range(args.acc_grad_size):
-                    L_list = []
-                    data, label = next(generate_data)
-                    # make one hot vectors
-                    data = mx.ndarray.one_hot(mx.nd.array(data), args.vocab_size)
-                    label = mx.ndarray.one_hot(mx.nd.array(label), args.vocab_size)
+                data, label = next(generate_data)
+                # make one hot vectors
+                data = mx.ndarray.one_hot(mx.nd.array(data), args.vocab_size)
+                label = mx.ndarray.one_hot(mx.nd.array(label), args.vocab_size)
 
-                    data  = mx.nd.reshape(data,(data.shape[0],args.batch_size,data.shape[1]))
-                    label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
-                    # label = mx.nd.array(label)
-                    output, hidden = model(data, hidden)
-                    L_list.append(loss(output, label))
-                L = sum(L_list)
+                data  = mx.nd.reshape(data,(data.shape[0],args.batch_size,data.shape[1]))
+                label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
+                # label = mx.nd.array(label)
+                output, hidden = model(data, hidden)
+                L = loss(output, label)
+                L.backward()
+            trainer.step(args.batch_size)
+        # for ibatch in tqdm(range(batch_num)):
+        #     '''One mini batch'''
+        #     hidden = detach(hidden)
+        #
+        #     with autograd.record():
+        #         for j in range(args.acc_grad_size):
+        #             L_list = []
+        #             data, label = next(generate_data)
+        #             # make one hot vectors
+        #             data = mx.ndarray.one_hot(mx.nd.array(data), args.vocab_size)
+        #             label = mx.ndarray.one_hot(mx.nd.array(label), args.vocab_size)
+        #
+        #             data  = mx.nd.reshape(data,(data.shape[0],args.batch_size,data.shape[1]))
+        #             label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
+        #             # label = mx.nd.array(label)
+        #             output, hidden = model(data, hidden)
+        #             L_list.append(loss(output, label))
+        #         L = sum(L_list)
                 # print(type(L), L)
             # L.backward()
-            mx.autograd.backward(L_list)
-            total_L += mx.nd.sum(L).asscalar()
+            # mx.autograd.backward(L_list)
+            # # total_L += mx.nd.sum(L).asscalar()
+            #
+            # params = model.collect_params()
+            # print('Grad ', model.decoder.weight.grad())
+            # # print(params)
+            # # print(params['rnnmodel0_dense0_weight'].data())
+            # trainer.step(args.acc_grad_size)
 
-            params = model.collect_params()
-            print('Grad ', model.decoder.weight.grad())
-            # print(params)
-            # print(params['rnnmodel0_dense0_weight'].data())
-            trainer.step(args.acc_grad_size)
-
-            if ibatch % args.log_interval == 0 and ibatch > 0:
-                cur_L = total_L / args.acc_grad_size / args.log_interval
-                print('[Epoch %d Batch %d] loss %.2f, perplexity %.2f' % (
-                    epoch + 1, ibatch, cur_L, math.exp(cur_L)))
-                total_L = 0.0
+            # if ibatch % args.log_interval == 0 and ibatch > 0:
+            #     cur_L = total_L / args.acc_grad_size / args.log_interval
+            #     print('[Epoch %d Batch %d] loss %.2f, perplexity %.2f' % (
+            #         epoch + 1, ibatch, cur_L, math.exp(cur_L)))
+            #     total_L = 0.0
 
         val_L = eval(X_D_dev)
         print('[Epoch %d] time cost %.2fs, validation loss %.2f, validation perplexity %.2f' % (
