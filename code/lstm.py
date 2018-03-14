@@ -172,7 +172,7 @@ class RNNModel(gluon.Block):
                  num_layers, dropout, tie_weights, **kwargs):
         super(RNNModel, self).__init__(**kwargs)
         with self.name_scope():
-            self.drop = nn.Dropout(dropout)
+            # self.drop = nn.Dropout(dropout)
             # self.encoder = nn.Embedding(vocab_size, num_embed,
             #                             weight_initializer = mx.init.Uniform(0.1))
             if mode == 'rnn_relu':
@@ -198,7 +198,7 @@ class RNNModel(gluon.Block):
         # emb = self.drop(self.encoder(inputs))
         # output, hidden = self.rnn(emb, hidden)
         output, hidden = self.rnn(inputs, hidden)
-        output = self.drop(output)
+        # output = self.drop(output)
         decoded = self.decoder(output.reshape((-1, self.num_hidden)))
         return decoded, hidden
 
