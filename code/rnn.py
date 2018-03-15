@@ -847,9 +847,9 @@ if __name__ == "__main__":
             the look-back in backpropagation (at least: 0, 2, 5),
             and learning rate (at least: 0.5, 0.1, 0.05).
         """
-        hyper_params = [[50], [0], [0.5], [32]]
+        hyper_params = [[50], [0], [0.5], [32], [0]]
         hyper_params = list(itertools.product(*hyper_params))
-        logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
+        logging.info("Parameter tuning of hidden_dims, lookback, lr, anneal: \n{}".format(
                                         hyper_params))
         logging.info("Total experiments {}".format(len(hyper_params)))
         for experiment, hyper_param in enumerate(hyper_params):
@@ -859,9 +859,10 @@ if __name__ == "__main__":
             lookback = hyper_param[1]
             lr = hyper_param[2]
             batch_size = hyper_param[3]
+            anneal = hyper_param[4]
             rnn = RNN(vocab_size, hdim, vocab_size)
             run_loss = rnn.train(X_train, D_train, X_dev, D_dev, epochs = epochs,
-                                  learning_rate = lr, back_steps = lookback,
+                                  learning_rate = lr, anneal=anneal, back_steps = lookback,
                                   batch_size = batch_size)
 
         # Load the test set
