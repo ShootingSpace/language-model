@@ -199,8 +199,8 @@ class RNNModel(gluon.Block):
         # output, hidden = self.rnn(emb, hidden)
         output, hidden = self.rnn(inputs, hidden)
         # output = self.drop(output)
-        decoded = self.decoder(output.reshape((-1, self.num_hidden)))
-        return decoded, hidden
+        # decoded = self.decoder(output.reshape((-1, self.num_hidden)))
+        return output, hidden
 
     def begin_state(self, *args, **kwargs):
         return self.rnn.begin_state(*args, **kwargs)
