@@ -2,7 +2,7 @@ import argparse
 import time
 import math
 import mxnet as mx
-from mxnet import gluon, autograd
+from mxnet import gluon, autograd, nd
 from lstm import RNNModel, Corpus
 import numpy as np
 import bisect
@@ -88,8 +88,16 @@ def train():
 
     np.random.seed(2018)
 
-
+    lr_init = args.lr
     for epoch in range(args.epochs):
+        if args.anneal > 0:
+            args.lr = lr_init/((epoch+0.0+args.anneal)/args.anneal)
+            print('lerning rate {} at epoch {}'.format(args.lr, epoch+1))
+            trainer._init_optimizer('sgd',
+                                    {'learning_rate': args.lr,
+                                     'momentum': 0,
+                                     'wd': 0})
+
         total_L = 0.0
         start_time = time.time()
         hidden = model.begin_state(batch_size=args.batch_size, func = mx.nd.zeros, ctx = context)
@@ -98,23 +106,22 @@ def train():
         generate_data = ((x,y) for x,y in X_D_train)
         # permutation = np.random.permutation(range(args.train_size))
 
-        model.collect_params().zero_grad()
+        # model.collect_params().zero_grad()
         batch_num = args.train_size // args.acc_grad_size
 
         for i in range(args.train_size):
             hidden = detach(hidden)
-            with autograd.record():
-                data, label = next(generate_data)
-                # make one hot vectors
-                data = mx.ndarray.one_hot(mx.nd.array(data), args.vocab_size)
-                label = mx.ndarray.one_hot(mx.nd.array(label), args.vocab_size)
+            data, label = next(generate_data)
+            # make one hot vectors
+            data = mx.ndarray.one_hot(mx.nd.array(data), args.vocab_size)
+            data  = mx.nd.reshape(data,(data.shape[0], args.batch_size, data.shape[1]))
+            label = mx.ndarray.one_hot(mx.nd.array(label), args.vocab_size)
+            label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
 
-                data  = mx.nd.reshape(data,(data.shape[0],args.batch_size,data.shape[1]))
-                label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
-                # label = mx.nd.array(label)
+            with autograd.record():
                 output, hidden = model(data, hidden)
                 L = loss(output, label)
-                L.backward()
+                L.backward(retain_graph=True)
             trainer.step(args.batch_size)
         # for ibatch in tqdm(range(batch_num)):
         #     '''One mini batch'''
@@ -155,19 +162,19 @@ def train():
         print('[Epoch %d] time cost %.2fs, validation loss %.2f, validation perplexity %.2f' % (
             epoch + 1, time.time() - start_time, val_L, math.exp(val_L)))
 
-        if val_L < best_val:
-            best_val = val_L
-            # test_L = eval(test_data)
-            model.save_params(args.save)
-            print('DEV loss %.2f, DEV perplexity %.2f' % (val_L, math.exp(val_L)))
-        else:
-            # args.lr = args.lr * 0.25
-            args.lr = args.lr/((epoch+0.0+args.anneal)/args.anneal)
-            trainer._init_optimizer('sgd',
-                                    {'learning_rate': args.lr,
-                                     'momentum': 0,
-                                     'wd': 0})
-            model.load_params(args.save, context)
+        # if val_L < best_val:
+        #     best_val = val_L
+        #     # test_L = eval(test_data)
+        #     model.save_params(args.save)
+        #     print('DEV loss %.2f, DEV perplexity %.2f' % (val_L, math.exp(val_L)))
+        # else:
+        #     args.lr = args.lr * 0.25
+        #     print('lerning rate', args.lr)
+        #     trainer._init_optimizer('sgd',
+        #                             {'learning_rate': args.lr,
+        #                              'momentum': 0,
+        #                              'wd': 0})
+        #     model.load_params(args.save, context)
 
 
 if __name__ == '__main__':
@@ -214,6 +221,7 @@ if __name__ == '__main__':
     # Parameter initialization
     model.collect_params().initialize(mx.init.Xavier(), ctx=context)
     for p in model.collect_params().values():
+        # p.attach_grad(grad_req = 'add')
         p.grad_req = 'add'
     trainer = gluon.Trainer(model.collect_params(), 'sgd',
                             {'learning_rate': args.lr, 'momentum': 0, 'wd': 0})
