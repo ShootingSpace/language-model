@@ -72,6 +72,7 @@ class Corpus(object):
 
         return corpus
 
+
     def make_fix_length_sequence(self, corpus, sequence_length):
         '''transfer the whole sequence into matrix'''
         mod = len(corpus) % sequence_length

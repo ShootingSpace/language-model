@@ -251,3 +251,63 @@ Using rnn_relu model ====================
 prepare data..........
 Using rnn_relu model ====================
 [Epoch 1] cost 9.09s, lr=0.50, training loss 7.60, validation loss nan, perplexity nan
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 10.32s, lr=0.50, training loss 9.28, validation loss 8.766895, perplexity 6418.210546
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 5.40s, lr=0.50, training loss 7.60, validation loss 7.598023, perplexity 1994.250096
+[Epoch 2] cost 3.29s, lr=0.42, training loss 7.60, validation loss 7.593674, perplexity 1985.595228
+[Epoch 3] cost 2.80s, lr=0.36, training loss 7.60, validation loss 7.590608, perplexity 1979.515818
+[Epoch 4] cost 2.89s, lr=0.31, training loss 7.59, validation loss 7.585584, perplexity 1969.596921
+[Epoch 5] cost 2.90s, lr=0.28, training loss 7.59, validation loss 7.583106, perplexity 1964.721424
+[Epoch 6] cost 3.19s, lr=0.25, training loss 7.58, validation loss 7.579894, perplexity 1958.421042
+[Epoch 7] cost 3.43s, lr=0.23, training loss 7.58, validation loss 7.575883, perplexity 1950.582122
+[Epoch 8] cost 2.93s, lr=0.21, training loss 7.57, validation loss 7.570935, perplexity 1940.954654
+[Epoch 9] cost 2.83s, lr=0.19, training loss 7.57, validation loss 7.562054, perplexity 1923.793066
+[Epoch 10] cost 2.84s, lr=0.18, training loss 7.56, validation loss 7.557037, perplexity 1914.165851
+TEST loss 7.549976940155029, perplexity 1900.6989010122277
+Load test set in lm-ln mode with size 50
+Number prediction accuracy on test set: 0.32
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 63.39s, lr=0.50, training loss 8.19, validation loss 6.690306, perplexity 804.568747
+[Epoch 2] cost 59.03s, lr=0.42, training loss 7.10, validation loss 7.404993, perplexity 1644.173750
+[Epoch 3] cost 58.80s, lr=0.36, training loss 6.82, validation loss 6.224527, perplexity 504.983886
+[Epoch 4] cost 60.36s, lr=0.31, training loss 6.58, validation loss 6.188315, perplexity 487.024638
+[Epoch 5] cost 62.30s, lr=0.28, training loss 6.24, validation loss 6.191316, perplexity 488.488330
+[Epoch 6] cost 71.03s, lr=0.25, training loss 6.24, validation loss 6.094729, perplexity 443.513739
+[Epoch 7] cost 65.51s, lr=0.23, training loss 6.12, validation loss 6.093579, perplexity 443.004144
+[Epoch 8] cost 65.20s, lr=0.21, training loss 6.14, validation loss 6.007313, perplexity 406.389977
+[Epoch 9] cost 66.09s, lr=0.19, training loss 6.03, validation loss 5.967065, perplexity 390.358273
+[Epoch 10] cost 66.52s, lr=0.18, training loss 5.96, validation loss 5.946669, perplexity 382.477195
+[Epoch 11] cost 72.18s, lr=0.17, training loss 6.03, validation loss 5.955854, perplexity 386.006236
+[Epoch 12] cost 66.75s, lr=0.16, training loss 6.00, validation loss 5.960455, perplexity 387.786580
+[Epoch 13] cost 68.33s, lr=0.15, training loss 5.93, validation loss 5.926117, perplexity 374.696836
+[Epoch 14] cost 68.42s, lr=0.14, training loss 5.86, validation loss 5.923956, perplexity 373.887802
+[Epoch 15] cost 69.60s, lr=0.13, training loss 5.91, validation loss 5.888141, perplexity 360.733936
+[Epoch 16] cost 68.74s, lr=0.12, training loss 5.77, validation loss 5.866062, perplexity 352.856692
+[Epoch 17] cost 68.85s, lr=0.12, training loss 5.89, validation loss 5.851612, perplexity 347.794647
+[Epoch 18] cost 68.79s, lr=0.11, training loss 5.86, validation loss 5.841726, perplexity 344.373184
+[Epoch 19] cost 66.76s, lr=0.11, training loss 5.84, validation loss 5.842130, perplexity 344.512360
+[Epoch 20] cost 67.33s, lr=0.10, training loss 5.85, validation loss 5.825256, perplexity 338.747675
+[Epoch 21] cost 67.03s, lr=0.10, training loss 5.87, validation loss 5.824388, perplexity 338.453790
+[Epoch 22] cost 66.42s, lr=0.10, training loss 5.80, validation loss 5.810765, perplexity 333.874398

@@ -17,7 +17,7 @@ class RNN(gluon.Block):
             mx.random.seed(seed)
 
         with self.name_scope():
-            self.drop = nn.Dropout(dropout)
+            # self.drop = nn.Dropout(dropout)
             # self.encoder = nn.Embedding(vocab_size, num_embed,
             #                             weight_initializer = mx.init.Uniform(0.1))
             if mode == 'rnn_relu':

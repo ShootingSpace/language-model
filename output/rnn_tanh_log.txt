@@ -29,3 +29,18 @@ Using rnn_tanh model ====================
 [Epoch 2] cost 36.00s, lr=0.42, training loss nan, validation loss nan, perplexity nan
 prepare data..........
 Using rnn_tanh model ====================
+prepare data..........
+Using rnn_tanh model ====================
+[Epoch 1] cost 63.83s, lr=0.50, training loss 8.19, validation loss 6.690306, perplexity 804.568747
+[Epoch 2] cost 80.97s, lr=0.42, training loss 7.10, validation loss 7.404993, perplexity 1644.173750
+[Epoch 3] cost 70.40s, lr=0.36, training loss 6.82, validation loss 6.224527, perplexity 504.983886
+[Epoch 4] cost 68.66s, lr=0.31, training loss 6.58, validation loss 6.188315, perplexity 487.024638
+[Epoch 5] cost 70.92s, lr=0.28, training loss 6.24, validation loss 6.191316, perplexity 488.488330
+[Epoch 6] cost 73.00s, lr=0.25, training loss 6.24, validation loss 6.094729, perplexity 443.513739
+[Epoch 7] cost 69.63s, lr=0.23, training loss 6.12, validation loss 6.093579, perplexity 443.004144
+[Epoch 8] cost 77.49s, lr=0.21, training loss 6.14, validation loss 6.007313, perplexity 406.389977
+[Epoch 9] cost 74.43s, lr=0.19, training loss 6.03, validation loss 5.967065, perplexity 390.358273
+[Epoch 10] cost 77.85s, lr=0.18, training loss 5.96, validation loss 5.946669, perplexity 382.477195
+TEST loss 5.939028907299042, perplexity 379.5661565865691
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.58475
