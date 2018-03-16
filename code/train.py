@@ -8,19 +8,27 @@ import numpy as np
 import bisect
 import random
 from tqdm import tqdm
+import os
+from os.path import join as pjoin
+from tempfile import TemporaryFile
+import logging
 from mxnet.gluon import nn, rnn
 from corpus import Corpus
 from gru import GRU
 from rnn_cell import RNN
+from utils import *
+from rnnmath import *
 
 parser = argparse.ArgumentParser(description='MXNet Autograd RNN/LSTM Language Model.')
 parser.add_argument('--model', type=str, default='lstm',
                     help='type of recurrent net (rnn_tanh, rnn_relu, lstm, gru)')
 parser.add_argument('--data_folder', type=str, default='data/', help='folder that store data')
+parser.add_argument('--output_dir', type=str, default='output', help='log directory')
 parser.add_argument('--vocab_size', type=int, default=2000, help='vocab_size')
 parser.add_argument('--sequence_length', type=int, default=60, help='sequence length for each inputs')
 parser.add_argument('--train_size', type=int, default=1000, help='train_size')
 parser.add_argument('--dev_size', type=int, default=1000, help='dev_size')
+parser.add_argument('--test_size', type=int, default=None, help='test_size')
 parser.add_argument('--num_embed', type=int, default=2000, help='size of word embeddings')
 parser.add_argument('--num_hidden', type=int, default=50, help='number of hidden units per layer')
 parser.add_argument('--num_layers', type=int, default=1, help='number of layers')
@@ -79,10 +87,11 @@ def detach(hidden):
 def eval(data_source):
     total_loss = 0.0
     ntotal = 0
-    hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
+
     data, label = zip(*data_source)
 
     for i in range(args.dev_size):
+        hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
         # make one hot vectors
         idata = mx.ndarray.one_hot(mx.nd.array(data[i]), args.vocab_size)
         ilabel = mx.ndarray.one_hot(mx.nd.array(label[i]), args.vocab_size)
@@ -126,6 +135,9 @@ def train():
         generate_data = ((x,y) for x,y in X_D_train)
 
         for i in tqdm(range(args.train_size)):
+            # hidden = detach(hidden)
+            hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
+
             data, label = next(generate_data)
             # make one hot vectors
             data  = mx.ndarray.one_hot(mx.nd.array(data), args.vocab_size)
@@ -156,8 +168,61 @@ def train():
                 moving_loss = .99 * moving_loss + .01 * nd.mean(train_loss).asscalar()
 
         val_loss = eval(X_D_dev)
-        print('[Epoch %d] cost %.2fs, lr=%.2f, training loss %.2f, validation loss %.6f, perplexity %.6f' % (
+        logging.info('[Epoch %d] cost %.2fs, lr=%.2f, training loss %.2f, validation loss %.6f, perplexity %.6f' % (
             epoch + 1, time.time() - start_time, learning_rate, moving_loss, val_loss, math.exp(val_loss)))
+
+        if val_loss < best_val:
+            best_val = val_loss
+
+            model.save_params(args.save)
+
+
+    test_loss = eval(X_D_test)
+    logging.info('TEST loss {}, perplexity {}'.format(test_loss, math.exp(test_loss)))
+
+def predict_lm():
+    # get vocabulary
+    vocab = pd.read_table(data_folder + "/vocab.wiki.txt", header=None, sep="\s+", index_col=0, names=['count', 'freq'], )
+    num_to_word = dict(enumerate(vocab.index[:vocab_size]))
+    word_to_num = invert_dict(num_to_word)
+    # load test data
+    sents, test_span = load_lm_np_dataset(data_folder + '/wiki-test.txt')
+    S_np_test = docs_to_indices(sents, word_to_num, 1, 0)
+    X_np_test, D_np_test = seqs_to_lmnpXY(S_np_test)
+    logging.info("Load test set in lm-ln mode with size {}".format(X_np_test.size))
+    np_acc_test = compute_acc_lmnp(X_np_test, D_np_test)
+    logging.info('Number prediction accuracy on test set: {}'.format(np_acc_test))
+    test_span = np.concatenate((np.array(stats), np.array(test_span, ndmin=2).T), axis = 1)
+    np.savetxt(args.model+'test_span.csv', np.array(test_span), delimiter=',')
+
+
+def compute_acc_lmnp(X, D):
+        '''
+        X_dev            a list of input vectors, e.g.,         [[5, 4, 2], [7, 3, 8]]
+        D_dev            a list of pair verb forms (plural/singular), e.g.,     [[4, 9], [6, 5]]
+        '''
+        acc = sum([compare_num_pred(X[i], D[i]) for i in range(len(X))]) / len(X)
+        return acc
+
+def compare_num_pred(x, d):
+    '''
+        x        list of words, as indices, e.g.: [0, 4, 2]
+        d        the desired verb and its (re)inflected form (singular/plural), as indices, e.g.: [7, 8]
+        return 1 if p(d[0]) > p(d[1]), 0 otherwise
+    '''
+    hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
+    # make one hot vectors
+    data = mx.ndarray.one_hot(mx.nd.array(x), args.vocab_size)
+    data = mx.nd.reshape(data,(data.shape[0], args.batch_size, data.shape[1]))
+
+    y, _ = model.forward(data, hidden) # output shape (batch_size, vocab_size).
+    # y = np.array(y)
+    predict = 1 if y[len(x)-1, int(d[0])] > y[len(x)-1,int(d[1])] else 0
+    stats.append([len(x), predict])
+    return predict
+
+def predict(data):
+    hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
 
 
 if __name__ == '__main__':
@@ -165,6 +230,14 @@ if __name__ == '__main__':
         context = mx.gpu(0)
     else:
         context = mx.cpu(0)
+
+    output_dir = args.output_dir
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    file_handler = logging.FileHandler(pjoin(output_dir, args.model + "_log.txt"))
+    logging.getLogger().addHandler(file_handler)
+
+    run_loss = -1
     ###############################################################################
     # Load data
     ###############################################################################
@@ -178,21 +251,21 @@ if __name__ == '__main__':
     corpus = Corpus(vocab_size=args.vocab_size, vocab_file = args.data_folder+ 'vocab.wiki.txt')
 
     '''prepare data, support buckets batches '''
-    print("prepare data" + '.'*10)
+    logging.info("prepare data" + '.'*10)
     # buckets for batch training
     # buckets = [ 10, 20, 30, 40, 50, 60]
     X_D_train = corpus.tokenize(args.data_folder + 'wiki-train.txt',
                             args.sequence_length, args.train_size)
     X_D_dev   = corpus.tokenize(args.data_folder + 'wiki-dev.txt',
                             args.sequence_length, args.dev_size)
-    # X_D_test  = corpus.tokenize(args.data_folder + 'wiki-test.txt',
-    #                         args.sequence_length)
+    X_D_test  = corpus.tokenize(args.data_folder + 'wiki-test.txt',
+                            args.sequence_length, args.test_size)
 
     '''Build the model, initialize model parameters,
     and configure the optimization algorithms for training the RNN model.'''
 
     # Setup model and Parameter initialization
-    print('Using {} model {}'.format(args.model,'='*20))
+    logging.info('Using {} model {}'.format(args.model,'='*20))
     model = RNN(mode=args.model, seed=args.seed, vocab_size=args.vocab_size, num_embed=args.num_embed,
                 num_hidden=args.num_hidden, num_layers=args.num_layers, dropout=args.dropout)
     model.collect_params().initialize(mx.init.Xavier(), ctx=context)
@@ -206,6 +279,11 @@ if __name__ == '__main__':
         p.grad_req = 'add'
 
     train()
+
+    data_folder = args.data_folder
+    vocab_size = args.vocab_size
+    stats = []
+    predict_lm()
 
 
     # test_L = eval(X_D_test)

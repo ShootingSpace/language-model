@@ -15,7 +15,7 @@ class RNN(gluon.Block):
         super(RNN, self).__init__(**kwargs)
         if seed:
             mx.random.seed(seed)
-            
+
         with self.name_scope():
             self.drop = nn.Dropout(dropout)
             # self.encoder = nn.Embedding(vocab_size, num_embed,
