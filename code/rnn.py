@@ -951,11 +951,16 @@ if __name__ == "__main__":
                 best_param = [hdim, lookback, lr]
 
         # Load the test set
-        sents = load_lm_dataset(data_folder + '/wiki-test.txt')
+        # sents = load_lm_dataset(data_folder + '/wiki-test.txt')
+        # S_test = docs_to_indices(sents, word_to_num, 0, 0)
+        # X_test, D_test = seqs_to_lmXY(S_test)
+        sents = load_np_dataset(data_folder + '/wiki-train.txt')
         S_test = docs_to_indices(sents, word_to_num, 0, 0)
-        X_test, D_test = seqs_to_lmXY(S_test)
-        loss = sum([loss_function(X_test[i], D_test[i]) for i in range(len(X_test))]) / len(D_test)
-        acc = best_model.compute_acc_lmnp(X_test, D_test)
+        X_test, D_test = seqs_to_npXY(S_test)
+        # loss_function = best_model.compute_loss_np
+        loss = sum([best_model.compute_loss_np(X_test[i], D_test[i]) for i in range(len(X_test))]) / len(D_test)
+        acc = sum([best_model.compute_acc_np(X_test[i], D_test[i]) for i in range(len(X_test))]) / len(X_test)
+        # acc = best_model.compute_acc_lmnp(X_test, D_test)
         logging.info("Best model with hidden_dims: {}, lookback: {}, lr: {}\n \
                       obatains loss {} and acc {} on test set".format(
                     best_param[0], best_param[1], best_param[2], loss, acc))

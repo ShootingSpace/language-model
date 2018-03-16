@@ -1,0 +1,253 @@
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 5.77s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 4.65s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 7.76s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 5.58s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.0
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 8.47s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 7.84s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 6.84s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.0
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 6.93s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.0
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 7.32s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.0
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 6.80s, lr=0.50, training loss 7.60, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 5.99s, lr=0.50, training loss 7.60, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.313
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 7.64s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 10.02s, lr=0.50, training loss 7.60, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 8.05s, lr=0.50, training loss 7.60, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 7.85s, lr=0.50, training loss 7.60, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.03s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.15s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.07s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.348
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.59s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 2] cost 1.49s, lr=0.42, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.348
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.12s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 2] cost 1.13s, lr=0.42, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.29s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.27s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.10s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.348
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.34s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.348
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.19s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.12s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 4000
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.41s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.348
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.35s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 10
+Number prediction accuracy on test set: 0.5
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 71.40s, lr=0.50, training loss nan, validation loss nan, perplexity nan
+[Epoch 2] cost 59.99s, lr=0.42, training loss nan, validation loss nan, perplexity nan
+[Epoch 3] cost 60.09s, lr=0.36, training loss nan, validation loss nan, perplexity nan
+[Epoch 4] cost 59.95s, lr=0.31, training loss nan, validation loss nan, perplexity nan
+[Epoch 5] cost 62.42s, lr=0.28, training loss nan, validation loss nan, perplexity nan
+[Epoch 6] cost 63.62s, lr=0.25, training loss nan, validation loss nan, perplexity nan
+[Epoch 7] cost 64.13s, lr=0.23, training loss nan, validation loss nan, perplexity nan
+[Epoch 8] cost 64.97s, lr=0.21, training loss nan, validation loss nan, perplexity nan
+[Epoch 9] cost 65.70s, lr=0.19, training loss nan, validation loss nan, perplexity nan
+[Epoch 10] cost 65.64s, lr=0.18, training loss nan, validation loss nan, perplexity nan
+TEST loss nan, perplexity nan
+Load test set in lm-ln mode with size 4000
+Number prediction accuracy on test set: 0.0
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 1.30s, lr=0.50, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 2] cost 1.11s, lr=0.42, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 3] cost 0.92s, lr=0.36, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 4] cost 0.96s, lr=0.31, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 5] cost 0.83s, lr=0.28, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 6] cost 0.76s, lr=0.25, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 7] cost 0.68s, lr=0.23, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 8] cost 0.63s, lr=0.21, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 9] cost 0.62s, lr=0.19, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+[Epoch 10] cost 0.63s, lr=0.18, training loss 7.60, validation loss 7.600717, perplexity 1999.629346
+TEST loss 7.600499963760376, perplexity 1999.195170417708
+Load test set in lm-ln mode with size 10
+Number prediction accuracy on test set: 0.5
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 5.16s, lr=0.50, training loss 7.60, validation loss nan, perplexity nan
+[Epoch 2] cost 4.04s, lr=0.42, training loss nan, validation loss nan, perplexity nan
+[Epoch 3] cost 3.12s, lr=0.36, training loss nan, validation loss nan, perplexity nan
+[Epoch 4] cost 2.83s, lr=0.31, training loss nan, validation loss nan, perplexity nan
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+prepare data..........
+Using rnn_relu model ====================
+[Epoch 1] cost 9.09s, lr=0.50, training loss 7.60, validation loss nan, perplexity nan

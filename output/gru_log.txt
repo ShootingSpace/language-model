@@ -1,0 +1,5 @@
+prepare data..........
+Using gru model ====================
+[Epoch 1] cost 13.94s, lr=0.50, training loss nan, validation loss 198.038166, perplexity 101597460506629840056667454120748294922461046971840057277871344843606831417616179920896.000000
+TEST loss 197.37935607910157, perplexity 5.257329375931912e+85
+Load test set in lm-ln mode with size 4000
