@@ -63,14 +63,21 @@ def softmax(y_linear, temperature=1.0):
     return exp / partition
 
 def cross_entropy(yhat, y):
-    return - nd.mean(nd.sum(y * nd.log(yhat), axis=0, exclude=True))
+    # print( (yhat[1:10]* mx.nd.log_softmax(yhat[1:10])).shape)
+    # print("DEBUG",nd.log_softmax(yhat), yhat)
+    return - nd.mean(nd.sum(y * nd.log_softmax(yhat), axis=0, exclude=True))
 
 def average_ce_loss(outputs, labels):
     '''Averaging the loss over the sequence'''
     assert(len(outputs) == len(labels))
+    # print(outputs.shape, labels.shape)
     total_loss = nd.array([0.], ctx=context)
     for (output, label) in zip(outputs,labels):
+        # print("cross_entropy", cross_entropy(output, label))
         total_loss = total_loss + cross_entropy(output, label)
+    # print(total_loss.asnumpy()[0], len(outputs))
+    # if math.isnan(float(total_loss.asnumpy()[0]/ len(outputs))):
+    #     print(total_loss, len(outputs))
     return total_loss / len(outputs)
 
 def SGD(params, lr):
@@ -100,7 +107,8 @@ def eval(data_source):
         ilabel = mx.nd.reshape(ilabel,(ilabel.shape[0],args.batch_size,ilabel.shape[1]))
 
         output, hidden = model.forward(idata, hidden)
-        val_loss = loss(output, ilabel)
+        # val_loss = loss(output, ilabel)
+        val_loss = average_ce_loss(output, ilabel)
         total_loss += mx.nd.sum(val_loss).asscalar()
         # ntotal += idata.shape[0]
     # assert ntotal == args.dev_size, (ntotal)
@@ -147,10 +155,18 @@ def train():
 
             with autograd.record():
                 output, hidden = model.forward(data, hidden)
-                # loss = average_ce_loss(output, label)
-                train_loss = loss(output, label)
-                train_loss.backward()
-                hidden = detach(hidden)
+                loss = average_ce_loss(output, label)
+                loss.backward()
+                train_loss = loss
+                # train_loss = loss(output, label)
+                # train_loss.backward()
+
+            grads = [i.grad(context) for i in model.collect_params().values()]
+            # Here gradient is for the whole batch.
+            # So we multiply max_norm by batch_size and bptt size to balance it.
+            gluon.utils.clip_global_norm(grads, args.clip * args.acc_grad_size)
+
+            hidden = detach(hidden)
             if (i+1) % args.acc_grad_size == 0:
                 trainer.step(args.acc_grad_size)
                 '''Sets gradient buffer on all contexts to 0.
@@ -186,7 +202,7 @@ def predict_lm():
     num_to_word = dict(enumerate(vocab.index[:vocab_size]))
     word_to_num = invert_dict(num_to_word)
     # load test data
-    sents, test_span = load_lm_np_dataset(data_folder + '/wiki-test.txt')
+    sents, test_span = load_lm_np_dataset(data_folder + '/wiki-test.txt', args.test_size)
     S_np_test = docs_to_indices(sents, word_to_num, 1, 0)
     X_np_test, D_np_test = seqs_to_lmnpXY(S_np_test)
     logging.info("Load test set in lm-ln mode with size {}".format(X_np_test.size))
@@ -195,13 +211,33 @@ def predict_lm():
     test_span = np.concatenate((np.array(stats), np.array(test_span, ndmin=2).T), axis = 1)
     np.savetxt(args.model+'test_span.csv', np.array(test_span), delimiter=',')
 
+def load_lm_np_dataset(fname, size=None):
+    sents = []
+    # return the span between subj_idx & verb_idx
+    span = []
+    cnt = 0
+    with open(fname) as f:
+        for line in f:
+            if cnt == 0:
+                cnt += 1
+                continue
+            items = line.strip().split('\t')
+            verb_idx = int(items[2])
+            verb = items[4]
+            inf_verb = items[5]
+            sent = items[0].split()[:verb_idx] + [verb, inf_verb]
+            sents.append(sent)
+            span.append(int(items[2]) - int(items[1]))
+            if size and cnt == size:
+                break
+            cnt += 1
+    return sents, span
 
 def compute_acc_lmnp(X, D):
         '''
-        X_dev            a list of input vectors, e.g.,         [[5, 4, 2], [7, 3, 8]]
-        D_dev            a list of pair verb forms (plural/singular), e.g.,     [[4, 9], [6, 5]]
+        X            a list of input vectors, e.g.,         [[5, 4, 2], [7, 3, 8]]
+        D            a list of pair verb forms (plural/singular), e.g.,     [[4, 9], [6, 5]]
         '''
-        D = cast(D, dtype='int32')
         acc = sum([compare_num_pred(X[i], D[i]) for i in range(len(X))]) / len(X)
         return acc
 
@@ -217,13 +253,10 @@ def compare_num_pred(x, d):
     data = mx.nd.reshape(data,(data.shape[0], args.batch_size, data.shape[1]))
 
     y, _ = model.forward(data, hidden) # output shape (batch_size, vocab_size).
-    y = y.asnumpy()
-    predict = 1 if y[-1, d[0]] > y[-1, d[1]] else 0
+    # y = y.asnumpy()
+    predict = 1 if y[len(x)-1, int(d[0])] > y[len(x)-1, int(d[1])] else 0
     stats.append([len(x), predict])
     return predict
-
-def predict(data):
-    hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
 
 
 if __name__ == '__main__':
