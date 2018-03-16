@@ -847,7 +847,7 @@ if __name__ == "__main__":
             the look-back in backpropagation (at least: 0, 2, 5),
             and learning rate (at least: 0.5, 0.1, 0.05).
         """
-        hyper_params = [[50], [0], [0.5], [32], [0]]
+        hyper_params = [[50], [0], [0.5], [50], [0]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr, anneal: \n{}".format(
                                         hyper_params))
@@ -928,7 +928,7 @@ if __name__ == "__main__":
 
         ##########################
         # --- your code here --- #
-        hyper_params = [[100], [5], [0.5,], [50]]
+        hyper_params = [[50], [5], [0.5,], [50]]
         hyper_params = list(itertools.product(*hyper_params))
         logging.info("Parameter tuning of hidden_dims, lookback, lr: \n{}".format(
                                         hyper_params))
@@ -954,10 +954,11 @@ if __name__ == "__main__":
         sents = load_lm_dataset(data_folder + '/wiki-test.txt')
         S_test = docs_to_indices(sents, word_to_num, 0, 0)
         X_test, D_test = seqs_to_lmXY(S_test)
+        loss = sum([loss_function(X_test[i], D_test[i]) for i in range(len(X_test))]) / len(D_test)
         acc = best_model.compute_acc_lmnp(X_test, D_test)
-        logging.info(
-        "Best model with hidden_dims: {}, lookback: {}, lr: {}\n obatains acc {}".format(
-                                best_param[0], best_param[1], best_param[2], acc))
+        logging.info("Best model with hidden_dims: {}, lookback: {}, lr: {}\n \
+                      obatains loss {} and acc {} on test set".format(
+                    best_param[0], best_param[1], best_param[2], loss, acc))
 
         logging.info("Accuracy: %.03f" % acc)
         logging.info("="*10)
