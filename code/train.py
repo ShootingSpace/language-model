@@ -101,7 +101,6 @@ def eval(data_source):
 
         output, hidden = model.forward(idata, hidden)
         val_loss = loss(output, ilabel)
-
         total_loss += mx.nd.sum(val_loss).asscalar()
         # ntotal += idata.shape[0]
     # assert ntotal == args.dev_size, (ntotal)
@@ -144,6 +143,7 @@ def train():
             data  = mx.nd.reshape(data,(data.shape[0], args.batch_size, data.shape[1]))
             label = mx.ndarray.one_hot(mx.nd.array(label), args.vocab_size)
             label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
+
 
             with autograd.record():
                 output, hidden = model.forward(data, hidden)
@@ -201,6 +201,7 @@ def compute_acc_lmnp(X, D):
         X_dev            a list of input vectors, e.g.,         [[5, 4, 2], [7, 3, 8]]
         D_dev            a list of pair verb forms (plural/singular), e.g.,     [[4, 9], [6, 5]]
         '''
+        D = cast(D, dtype='int32')
         acc = sum([compare_num_pred(X[i], D[i]) for i in range(len(X))]) / len(X)
         return acc
 
@@ -216,8 +217,8 @@ def compare_num_pred(x, d):
     data = mx.nd.reshape(data,(data.shape[0], args.batch_size, data.shape[1]))
 
     y, _ = model.forward(data, hidden) # output shape (batch_size, vocab_size).
-    # y = np.array(y)
-    predict = 1 if y[len(x)-1, int(d[0])] > y[len(x)-1,int(d[1])] else 0
+    y = y.asnumpy()
+    predict = 1 if y[-1, d[0]] > y[-1, d[1]] else 0
     stats.append([len(x), predict])
     return predict
 
