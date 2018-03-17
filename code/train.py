@@ -112,7 +112,7 @@ def eval(data_source):
         total_loss += mx.nd.sum(val_loss).asscalar()
         # ntotal += idata.shape[0]
     # assert ntotal == args.dev_size, (ntotal)
-    return total_loss / args.dev_size
+    return total_loss / len(data_source)
 
 
 def train():
@@ -192,7 +192,7 @@ def train():
 
             model.save_params(args.save)
 
-
+    logging.info("Finished trianing with best dev error {}".format(best_val))
     test_loss = eval(X_D_test)
     logging.info('TEST loss {}, perplexity {}'.format(test_loss, math.exp(test_loss)))
 
