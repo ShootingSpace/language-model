@@ -107,8 +107,8 @@ def eval(data_source):
         ilabel = mx.nd.reshape(ilabel,(ilabel.shape[0],args.batch_size,ilabel.shape[1]))
 
         output, hidden = model.forward(idata, hidden)
-        # val_loss = loss(output, ilabel)
-        val_loss = average_ce_loss(output, ilabel)
+        val_loss = loss(output, ilabel)
+        # val_loss = average_ce_loss(output, ilabel)
         total_loss += mx.nd.sum(val_loss).asscalar()
         # ntotal += idata.shape[0]
     # assert ntotal == args.dev_size, (ntotal)
@@ -155,11 +155,11 @@ def train():
 
             with autograd.record():
                 output, hidden = model.forward(data, hidden)
-                loss = average_ce_loss(output, label)
-                loss.backward()
-                train_loss = loss
-                # train_loss = loss(output, label)
-                # train_loss.backward()
+                # loss = average_ce_loss(output, label)
+                # loss.backward()
+                # train_loss = loss
+                train_loss = loss(output, label)
+                train_loss.backward()
 
             grads = [i.grad(context) for i in model.collect_params().values()]
             # Here gradient is for the whole batch.
