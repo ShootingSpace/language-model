@@ -18,7 +18,7 @@ class GRU():
 
         num_inputs = vocab_size
         num_outputs = vocab_size
-        num_hidden = num_hidden
+        self.num_hidden = num_hidden
 
         ########################
         #  Weights connecting the inputs to the hidden layer
@@ -50,9 +50,6 @@ class GRU():
         self.params = [self.Wxz, self.Wxr, self.Wxh, self.Whz, self.Whr, self.Whh,
                      self.bz, self.br, self.bh, self.Why, self.by]
 
-
-
-
     def forward(self, inputs, h, temperature=1.0):
         outputs = []
         for X in inputs:
@@ -62,6 +59,10 @@ class GRU():
             h = z * h + (1 - z) * g
 
             yhat_linear = nd.dot(h, self.Why) + self.by
+            # print(yhat_linear)
             yhat = softmax(yhat_linear, temperature=temperature)
             outputs.append(yhat)
         return (outputs, h)
+
+    def begin_state(self, batch_size, ctx):
+        return nd.zeros(shape=(batch_size, self.num_hidden), ctx=ctx)

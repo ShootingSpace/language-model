@@ -7,19 +7,28 @@ from lstm import RNNModel, Corpus
 import numpy as np
 import bisect
 import random
+import logging
+import os
+from os.path import join as pjoin
 from tqdm import tqdm
 from mxnet.gluon import nn, rnn
 from corpus import Corpus
 from gru import GRU
+import pandas as pd
+from utils import *
+from rnnmath import *
+
 
 parser = argparse.ArgumentParser(description='MXNet Autograd RNN/LSTM Language Model.')
-parser.add_argument('--model', type=str, default='lstm',
+parser.add_argument('--model', type=str, default='gru',
                     help='type of recurrent net (rnn_tanh, rnn_relu, lstm, gru)')
 parser.add_argument('--data_folder', type=str, default='data/', help='folder that store data')
+parser.add_argument('--output_dir', type=str, default='output', help='log directory')
 parser.add_argument('--vocab_size', type=int, default=2000, help='vocab_size')
 parser.add_argument('--sequence_length', type=int, default=60, help='sequence length for each inputs')
 parser.add_argument('--train_size', type=int, default=1000, help='train_size')
 parser.add_argument('--dev_size', type=int, default=1000, help='dev_size')
+parser.add_argument('--test_size', type=int, default=None, help='test_size')
 parser.add_argument('--num_embed', type=int, default=2000, help='size of word embeddings')
 parser.add_argument('--num_hidden', type=int, default=50, help='number of hidden units per layer')
 parser.add_argument('--num_layers', type=int, default=1, help='number of layers')
@@ -63,17 +72,31 @@ def average_ce_loss(outputs, labels):
         total_loss = total_loss + cross_entropy(output, label)
     return total_loss / len(outputs)
 
-def SGD(params, lr):
+def SGD(params, lr, delay_time=1):
+    ''' If delay > 1, using aggregate gradients updates, needs to divded the change
+        magnitude with delay_tiem
+    '''
     for param in params:
-        param[:] = param - lr * param.grad
+        param[:] = param - lr * param.grad / delay_time
+
+def grad_clipping(params, theta, ctx):
+    if theta is not None:
+        norm = nd.array([0.0], ctx)
+        for p in params:
+            norm += nd.sum(p.grad ** 2)
+        norm = nd.sqrt(norm).asscalar()
+        if norm > theta:
+            for p in params:
+                p.grad[:] *= theta / norm
 
 def eval(data_source):
     total_loss = 0.0
     ntotal = 0
-    hidden = nd.zeros(shape=(args.batch_size, args.num_hidden), ctx=context)
+
     data, label = zip(*data_source)
 
     for i in range(args.dev_size):
+        hidden = nd.zeros(shape=(args.batch_size, args.num_hidden), ctx=context)
         # make one hot vectors
         idata = mx.ndarray.one_hot(mx.nd.array(data[i]), args.vocab_size)
         ilabel = mx.ndarray.one_hot(mx.nd.array(label[i]), args.vocab_size)
@@ -87,7 +110,7 @@ def eval(data_source):
         total_loss += mx.nd.sum(loss).asscalar()
         # ntotal += idata.shape[0]
     # assert ntotal == args.dev_size, (ntotal)
-    return total_loss / args.dev_size
+    return total_loss / len(data_source)
 
 
 def train():
@@ -110,7 +133,8 @@ def train():
         random.shuffle(X_D_train)
         generate_data = ((x,y) for x,y in X_D_train)
 
-        for i in range(args.train_size):
+        for i in tqdm(range(args.train_size)):
+            hidden = nd.zeros(shape=(args.batch_size, args.num_hidden), ctx=context)
             data, label = next(generate_data)
             # make one hot vectors
             data = mx.ndarray.one_hot(mx.nd.array(data), args.vocab_size)
@@ -122,7 +146,14 @@ def train():
                 output, hidden = model.forward(data, hidden)
                 loss = average_ce_loss(output, label)
                 loss.backward()
-            SGD(model.params, learning_rate)
+
+            grad_clipping(model.params, args.acc_grad_size * args.clip, context)
+            # SGD(model.params, learning_rate)
+            if (i+1) % args.acc_grad_size == 0:
+                SGD(model.params, learning_rate, args.acc_grad_size)
+                # Now manually zero the grads
+                for param in model.params:
+                    param.grad[:] = 0.0
 
              ##########################
             #  Keep a moving average of the losses
@@ -132,26 +163,75 @@ def train():
             else:
                 moving_loss = .99 * moving_loss + .01 * nd.mean(loss).asscalar()
 
-        # print('Epoch {}. lerning_rate {}. Training loss: {}'.format(epoch+1,
-        #                                                             learning_rate,
-        #                                                             moving_loss))
         val_loss = eval(X_D_dev)
-        print('[Epoch %d] cost %.2fs, lr=%.2f, training loss%.2f, validation loss %.2f, perplexity %.2f' % (
+        logging.info('[Epoch %d] cost %.2fs, lr=%.2f, training loss %.2f, validation loss %.6f, perplexity %.6f' % (
             epoch + 1, time.time() - start_time, learning_rate, moving_loss, val_loss, math.exp(val_loss)))
 
-        # if val_L < best_val:
-        #     best_val = val_L
-        #     # test_L = eval(test_data)
-        #     model.save_params(args.save)
-        #     print('DEV loss %.2f, DEV perplexity %.2f' % (val_L, math.exp(val_L)))
-        # else:
-        #     args.lr = args.lr * 0.25
-        #     print('lerning rate', args.lr)
-        #     trainer._init_optimizer('sgd',
-        #                             {'learning_rate': args.lr,
-        #                              'momentum': 0,
-        #                              'wd': 0})
-        #     model.load_params(args.save, context)
+        if val_loss < best_val:
+            best_val = val_loss
+
+def predict_lm():
+    # get vocabulary
+    vocab = pd.read_table(data_folder + "/vocab.wiki.txt", header=None, sep="\s+", index_col=0, names=['count', 'freq'], )
+    num_to_word = dict(enumerate(vocab.index[:vocab_size]))
+    word_to_num = invert_dict(num_to_word)
+    # load test data
+    sents, test_span = load_lm_np_dataset(data_folder + '/wiki-test.txt', args.test_size)
+    S_np_test = docs_to_indices(sents, word_to_num, 1, 0)
+    X_np_test, D_np_test = seqs_to_lmnpXY(S_np_test)
+    logging.info("Load test set in lm-ln mode with size {}".format(X_np_test.size))
+    np_acc_test = compute_acc_lmnp(X_np_test, D_np_test)
+    logging.info('Number prediction accuracy on test set: {}'.format(np_acc_test))
+    test_span = np.concatenate((np.array(stats), np.array(test_span, ndmin=2).T), axis = 1)
+    np.savetxt(args.model+'test_span.csv', np.array(test_span), delimiter=',')
+
+def load_lm_np_dataset(fname, size=None):
+    sents = []
+    # return the span between subj_idx & verb_idx
+    span = []
+    cnt = 0
+    with open(fname) as f:
+        for line in f:
+            if cnt == 0:
+                cnt += 1
+                continue
+            items = line.strip().split('\t')
+            verb_idx = int(items[2])
+            verb = items[4]
+            inf_verb = items[5]
+            sent = items[0].split()[:verb_idx] + [verb, inf_verb]
+            sents.append(sent)
+            span.append(int(items[2]) - int(items[1]))
+            if size and cnt == size:
+                break
+            cnt += 1
+    return sents, span
+
+def compute_acc_lmnp(X, D):
+        '''
+        X            a list of input vectors, e.g.,         [[5, 4, 2], [7, 3, 8]]
+        D            a list of pair verb forms (plural/singular), e.g.,     [[4, 9], [6, 5]]
+        '''
+        acc = sum([compare_num_pred(X[i], D[i]) for i in range(len(X))]) / len(X)
+        return acc
+
+def compare_num_pred(x, d):
+    '''
+        x        list of words, as indices, e.g.: [0, 4, 2]
+        d        the desired verb and its (re)inflected form (singular/plural), as indices, e.g.: [7, 8]
+        return 1 if p(d[0]) > p(d[1]), 0 otherwise
+    '''
+    hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
+    # make one hot vectors
+    data = mx.ndarray.one_hot(mx.nd.array(x), args.vocab_size)
+    data = mx.nd.reshape(data,(data.shape[0], args.batch_size, data.shape[1]))
+
+    y, _ = model.forward(data, hidden) # output shape (batch_size, vocab_size).
+    predict = 1 if y[-1][0, int(d[0])] > y[-1][0, int(d[1])] else 0
+
+    stats.append([len(x), predict])
+    return predict
+
 
 
 if __name__ == '__main__':
@@ -159,6 +239,13 @@ if __name__ == '__main__':
         context = mx.gpu(0)
     else:
         context = mx.cpu(0)
+
+    output_dir = args.output_dir
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    file_handler = logging.FileHandler(pjoin(output_dir, "gru_log.txt"))
+    logging.getLogger().addHandler(file_handler)
+
     ###############################################################################
     # Load data
     ###############################################################################
@@ -180,17 +267,24 @@ if __name__ == '__main__':
                             args.sequence_length, args.train_size)
     X_D_dev   = corpus.tokenize(args.data_folder + 'wiki-dev.txt',
                             args.sequence_length, args.dev_size)
-    # X_D_test  = corpus.tokenize(args.data_folder + 'wiki-test.txt',
-    #                         args.sequence_length)
+
 
     '''Build the model, initialize model parameters,
     and configure the optimization algorithms for training the RNN model.'''
     model = GRU(args.vocab_size, args.num_hidden, seed=2018, ctx=context)
     # Attach the gradients
     for param in model.params:
-        param.attach_grad()
+        param.attach_grad(grad_req='add')
+        # param.attach_grad()
 
     train()
+
+    data_folder = args.data_folder
+    vocab_size = args.vocab_size
+    stats = []
+    X_D_test  = corpus.tokenize(args.data_folder + 'wiki-test.txt',
+                            args.sequence_length, args.test_size)
+    predict_lm()
 
 
     # test_L = eval(X_D_test)
