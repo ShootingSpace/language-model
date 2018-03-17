@@ -1,0 +1,124 @@
+Retained 2000 words from 9954 (88.81% of all tokens)
+
+Parameter tuning of hidden_dims, lookback, lr: 
+[(50, 0, 0.5)]
+Total experiments 1
+Training model for 50 epochs
+training set: 25000 sentences (batch size 100)
+Optimizing loss on 1000 sentences
+Vocab size: 2000
+Hidden units: 50
+Steps for back propagation: 0
+Initial learning rate set to 0.5, annealing set to 5
+calculating initial mean loss on dev set
+: 8.0400140456108
+
+epoch 1, learning rate 0.5000
+	 epoch done in 1517.42 seconds	new loss: 4.77132428832938
+epoch 2, learning rate 0.4167
+	 epoch done in 1496.14 seconds	new loss: 4.6477274224327685
+epoch 3, learning rate 0.3571
+	 epoch done in 1513.59 seconds	new loss: 4.601241097005845
+epoch 4, learning rate 0.3125
+	 epoch done in 1524.18 seconds	new loss: 4.553335512242331
+epoch 5, learning rate 0.2778
+	 epoch done in 1534.81 seconds	new loss: 4.522816527798231
+epoch 6, learning rate 0.2500
+	 epoch done in 1529.59 seconds	new loss: 4.48714929755182
+epoch 7, learning rate 0.2273
+	 epoch done in 1576.66 seconds	new loss: 4.4553921489981265
+epoch 8, learning rate 0.2083
+	 epoch done in 1530.80 seconds	new loss: 4.437246186192077
+epoch 9, learning rate 0.1923
+	 epoch done in 1532.84 seconds	new loss: 4.423284176548182
+epoch 10, learning rate 0.1786
+	 epoch done in 1546.46 seconds	new loss: 4.415478388552405
+epoch 11, learning rate 0.1667
+	 epoch done in 1515.21 seconds	new loss: 4.40384731082612
+epoch 12, learning rate 0.1562
+	 epoch done in 1530.03 seconds	new loss: 4.377501630002846
+epoch 13, learning rate 0.1471
+	 epoch done in 1545.74 seconds	new loss: 4.377080937328765
+epoch 14, learning rate 0.1389
+	 epoch done in 1547.01 seconds	new loss: 4.368946512679999
+epoch 15, learning rate 0.1316
+	 epoch done in 1524.14 seconds	new loss: 4.355808331258501
+epoch 16, learning rate 0.1250
+	 epoch done in 1542.52 seconds	new loss: 4.345800667078202
+epoch 17, learning rate 0.1190
+	 epoch done in 1519.82 seconds	new loss: 4.342308783986912
+epoch 18, learning rate 0.1136
+	 epoch done in 1536.79 seconds	new loss: 4.336406490123745
+epoch 19, learning rate 0.1087
+	 epoch done in 1514.07 seconds	new loss: 4.327046675789957
+epoch 20, learning rate 0.1042
+	 epoch done in 1523.77 seconds	new loss: 4.3249805712418095
+epoch 21, learning rate 0.1000
+	 epoch done in 1513.99 seconds	new loss: 4.31526823695734
+epoch 22, learning rate 0.0962
+	 epoch done in 1566.39 seconds	new loss: 4.310746607820733
+epoch 23, learning rate 0.0926
+	 epoch done in 1624.18 seconds	new loss: 4.305634029117141
+epoch 24, learning rate 0.0893
+	 epoch done in 1628.48 seconds	new loss: 4.305056919697683
+epoch 25, learning rate 0.0862
+	 epoch done in 1610.95 seconds	new loss: 4.299481306570567
+epoch 26, learning rate 0.0833
+	 epoch done in 1597.99 seconds	new loss: 4.300009190038929
+epoch 27, learning rate 0.0806
+	 epoch done in 1603.15 seconds	new loss: 4.292230170484907
+epoch 28, learning rate 0.0781
+	 epoch done in 1585.39 seconds	new loss: 4.288394597960927
+epoch 29, learning rate 0.0758
+	 epoch done in 1616.13 seconds	new loss: 4.284846348647482
+epoch 30, learning rate 0.0735
+	 epoch done in 1637.52 seconds	new loss: 4.286465444157097
+epoch 31, learning rate 0.0714
+	 epoch done in 1594.99 seconds	new loss: 4.279595104010256
+epoch 32, learning rate 0.0694
+	 epoch done in 1603.79 seconds	new loss: 4.2793974089703894
+epoch 33, learning rate 0.0676
+	 epoch done in 1641.46 seconds	new loss: 4.27486766001318
+epoch 34, learning rate 0.0658
+	 epoch done in 1706.21 seconds	new loss: 4.27400686185792
+epoch 35, learning rate 0.0641
+	 epoch done in 1705.73 seconds	new loss: 4.2700719641880305
+epoch 36, learning rate 0.0625
+	 epoch done in 1684.30 seconds	new loss: 4.267830010917818
+epoch 37, learning rate 0.0610
+	 epoch done in 1694.27 seconds	new loss: 4.26487046460871
+epoch 38, learning rate 0.0595
+	 epoch done in 1727.67 seconds	new loss: 4.263751416319425
+epoch 39, learning rate 0.0581
+	 epoch done in 1631.01 seconds	new loss: 4.263727301170531
+epoch 40, learning rate 0.0568
+	 epoch done in 1591.33 seconds	new loss: 4.261222556479321
+epoch 41, learning rate 0.0556
+	 epoch done in 1588.85 seconds	new loss: 4.25743806077244
+epoch 42, learning rate 0.0543
+	 epoch done in 1601.60 seconds	new loss: 4.256330313399309
+epoch 43, learning rate 0.0532
+	 epoch done in 1594.61 seconds	new loss: 4.253734830107412
+epoch 44, learning rate 0.0521
+	 epoch done in 1617.27 seconds	new loss: 4.252465146691008
+epoch 45, learning rate 0.0510
+	 epoch done in 1595.00 seconds	new loss: 4.250422118812839
+epoch 46, learning rate 0.0500
+	 epoch done in 1598.31 seconds	new loss: 4.248319440374092
+epoch 47, learning rate 0.0490
+	 epoch done in 1592.60 seconds	new loss: 4.248889279832632
+epoch 48, learning rate 0.0481
+	 epoch done in 1581.63 seconds	new loss: 4.248138992988933
+epoch 49, learning rate 0.0472
+	 epoch done in 1585.58 seconds	new loss: 4.249772285522221
+epoch 50, learning rate 0.0463
+	 epoch done in 1606.60 seconds	new loss: 4.2447732109910286
+
+
+training finished after reaching maximum of 50 epochs
+best observed loss was 4.2447732109910286, at epoch 50
+setting U, V, W to matrices from best epoch
+Mean loss on the full test set: 4.251621161855536
+Unadjusted: 70.219
+Adjusted for missing vocab: 91.031
+==========
