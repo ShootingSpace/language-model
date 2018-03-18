@@ -29,7 +29,7 @@ parser.add_argument('--sequence_length', type=int, default=60, help='sequence le
 parser.add_argument('--train_size', type=int, default=1000, help='train_size')
 parser.add_argument('--dev_size', type=int, default=1000, help='dev_size')
 parser.add_argument('--test_size', type=int, default=None, help='test_size')
-parser.add_argument('--num_embed', type=int, default=2000, help='size of word embeddings')
+parser.add_argument('--num_embed', type=int, default=0, help='size of word embeddings')
 parser.add_argument('--num_hidden', type=int, default=50, help='number of hidden units per layer')
 parser.add_argument('--num_layers', type=int, default=1, help='number of layers')
 parser.add_argument('--lr', type=float, default=0.5, help='initial learning rate')
@@ -62,24 +62,6 @@ def softmax(y_linear, temperature=1.0):
     partition = nd.sum(exp, axis=0, exclude=True).reshape((-1,1))
     return exp / partition
 
-def cross_entropy(yhat, y):
-    # print( (yhat[1:10]* mx.nd.log_softmax(yhat[1:10])).shape)
-    # print("DEBUG",nd.log_softmax(yhat), yhat)
-    return - nd.mean(nd.sum(y * nd.log_softmax(yhat), axis=0, exclude=True))
-
-def average_ce_loss(outputs, labels):
-    '''Averaging the loss over the sequence'''
-    assert(len(outputs) == len(labels))
-    # print(outputs.shape, labels.shape)
-    total_loss = nd.array([0.], ctx=context)
-    for (output, label) in zip(outputs,labels):
-        # print("cross_entropy", cross_entropy(output, label))
-        total_loss = total_loss + cross_entropy(output, label)
-    # print(total_loss.asnumpy()[0], len(outputs))
-    # if math.isnan(float(total_loss.asnumpy()[0]/ len(outputs))):
-    #     print(total_loss, len(outputs))
-    return total_loss / len(outputs)
-
 def SGD(params, lr):
     for param in params:
         param[:] = param - lr * param.grad
@@ -91,28 +73,40 @@ def detach(hidden):
         hidden = hidden.detach()
     return hidden
 
+def cross_entropy(yhat, y):
+    # return - nd.mean(nd.sum(y * nd.log_softmax(yhat), axis=0, exclude=True))
+    return - nd.sum(y * nd.log_softmax(yhat))
+
+def average_ce_loss(outputs, labels):
+    '''Averaging the loss over all words in all sentences of the given corpus'''
+    assert(len(outputs) == len(labels))
+    total_loss = nd.array([0.], ctx=context)
+    for (output, label) in zip(outputs,labels):
+        # print("cross_entropy", cross_entropy(output, label))
+        total_loss = total_loss + cross_entropy(output, label)
+    # if math.isnan(float(total_loss.asnumpy()[0]/ len(outputs))):
+    #     print(total_loss, len(outputs))
+    # return total_loss / len(outputs)
+    return total_loss
+
 def eval(data_source):
     total_loss = 0.0
-    ntotal = 0
+    total_words = 0
 
     data, label = zip(*data_source)
 
     for i in range(args.dev_size):
-        hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
-        # make one hot vectors
-        idata = mx.ndarray.one_hot(mx.nd.array(data[i]), args.vocab_size)
-        ilabel = mx.ndarray.one_hot(mx.nd.array(label[i]), args.vocab_size)
-
-        idata = mx.nd.reshape(idata,(idata.shape[0],args.batch_size,idata.shape[1]))
-        ilabel = mx.nd.reshape(ilabel,(ilabel.shape[0],args.batch_size,ilabel.shape[1]))
+        hidden = model.begin_state(func = mx.nd.zeros, batch_size=args.batch_size, ctx=context)
+        idata, ilabel = make_inputs(mx.nd.array(data[i]), mx.nd.array(label[i]))
 
         output, hidden = model.forward(idata, hidden)
-        val_loss = loss(output, ilabel)
-        # val_loss = average_ce_loss(output, ilabel)
+        # val_loss = loss(output, ilabel)
+        val_loss = average_ce_loss(output, ilabel)
         total_loss += mx.nd.sum(val_loss).asscalar()
-        # ntotal += idata.shape[0]
+        total_words += idata.shape[0]
     # assert ntotal == args.dev_size, (ntotal)
-    return total_loss / len(data_source)
+    return total_loss / total_words
+    # return total_loss / len(data)
 
 
 def train():
@@ -124,6 +118,7 @@ def train():
         np.random.seed(args.seed)
 
     best_val = float("Inf")
+    logging.info("Calculating initial mean loss on dev set: {}".format(eval(X_D_dev)))
 
     for epoch in range(args.epochs):
         ############################
@@ -134,36 +129,31 @@ def train():
             trainer.set_learning_rate(learning_rate)
 
         # hidden = nd.zeros(shape=(args.batch_size, args.num_hidden), ctx=context)
-        hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
+        hidden = model.begin_state(func = mx.nd.zeros, batch_size=args.batch_size, ctx=context)
 
-        total_L = 0.0
+        total_sequence_size = 0
+        total_loss = 0.0
         start_time = time.time()
         np.random.shuffle(X_D_train)
         generate_data = ((x,y) for x,y in X_D_train)
 
         for i in tqdm(range(args.train_size)):
             # hidden = detach(hidden)
-            hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
+            hidden = model.begin_state(func = mx.nd.zeros, batch_size=args.batch_size, ctx=context)
 
             data, label = next(generate_data)
-            # make one hot vectors
-            data  = mx.ndarray.one_hot(mx.nd.array(data), args.vocab_size)
-            data  = mx.nd.reshape(data,(data.shape[0], args.batch_size, data.shape[1]))
-            label = mx.ndarray.one_hot(mx.nd.array(label), args.vocab_size)
-            label = mx.nd.reshape(label,(label.shape[0],args.batch_size,label.shape[1]))
-
+            data, label = make_inputs(mx.nd.array(data), mx.nd.array(label))
 
             with autograd.record():
                 output, hidden = model.forward(data, hidden)
-                # loss = average_ce_loss(output, label)
-                # loss.backward()
-                # train_loss = loss
+                # train_loss = average_ce_loss(output, label)
                 train_loss = loss(output, label)
                 train_loss.backward()
 
             grads = [i.grad(context) for i in model.collect_params().values()]
-            # Here gradient is for the whole batch.
-            # So we multiply max_norm by batch_size and bptt size to balance it.
+
+            '''Here gradient is for the whole batch.
+            So we multiply max_norm by batch_size and bptt size to balance it.'''
             gluon.utils.clip_global_norm(grads, args.clip * args.acc_grad_size)
 
             hidden = detach(hidden)
@@ -175,17 +165,19 @@ def train():
                 model.collect_params().zero_grad()
 
 
-             ##########################
+            ##########################
             #  Keep a moving average of the losses
             ##########################
-            if (i == 0) and (epoch == 0):
-                moving_loss = nd.mean(train_loss).asscalar()
-            else:
-                moving_loss = .99 * moving_loss + .01 * nd.mean(train_loss).asscalar()
+            # total_loss += mx.nd.sum(train_loss).asscalar()
+            # total_sequence_size += len(output)
+            # if (i == 0) and (epoch == 0):
+            #     moving_loss = nd.mean(total_loss).asscalar()
+            # else:
+            #     moving_loss = .99 * moving_loss + .01 * nd.mean(train_loss).asscalar()
 
         val_loss = eval(X_D_dev)
-        logging.info('[Epoch %d] cost %.2fs, lr=%.2f, training loss %.2f, validation loss %.6f, perplexity %.6f' % (
-            epoch + 1, time.time() - start_time, learning_rate, moving_loss, val_loss, math.exp(val_loss)))
+        logging.info('[Epoch %d] cost %.2fs, lr=%.6f, validation loss %.6f, perplexity %.6f' % (
+            epoch + 1, time.time() - start_time, learning_rate, val_loss, math.exp(val_loss)))
 
         if val_loss < best_val:
             best_val = val_loss
@@ -195,6 +187,22 @@ def train():
     logging.info("Finished trianing with best dev error {}".format(best_val))
     test_loss = eval(X_D_test)
     logging.info('TEST loss {}, perplexity {}'.format(test_loss, math.exp(test_loss)))
+
+def make_inputs(data, label=None):
+    '''whether to make one hot encode and reshape or not'''
+    if args.num_embed:
+        data  = mx.nd.reshape(data,(-1, args.batch_size))
+    else:
+        # make one hot vectors
+        data  = mx.ndarray.one_hot(data, args.vocab_size)
+        data  = mx.nd.reshape(data,(data.shape[0], args.batch_size, data.shape[1]))
+
+    if label is not None:
+        label  = mx.ndarray.one_hot(label, args.vocab_size)
+        label  = mx.nd.reshape(label,(label.shape[0], args.batch_size, label.shape[1]))
+
+    return data, label
+
 
 def predict_lm():
     # get vocabulary
@@ -247,10 +255,8 @@ def compare_num_pred(x, d):
         d        the desired verb and its (re)inflected form (singular/plural), as indices, e.g.: [7, 8]
         return 1 if p(d[0]) > p(d[1]), 0 otherwise
     '''
-    hidden = model.begin_state(batch_size=args.batch_size, ctx=context)
-    # make one hot vectors
-    data = mx.ndarray.one_hot(mx.nd.array(x), args.vocab_size)
-    data = mx.nd.reshape(data,(data.shape[0], args.batch_size, data.shape[1]))
+    hidden = model.begin_state(func = mx.nd.zeros, batch_size=args.batch_size, ctx=context)
+    data, _ = make_inputs(mx.nd.array(x))
 
     y, _ = model.forward(data, hidden) # output shape (batch_size, vocab_size).
     # y = y.asnumpy()
@@ -299,7 +305,9 @@ if __name__ == '__main__':
     and configure the optimization algorithms for training the RNN model.'''
 
     # Setup model and Parameter initialization
-    logging.info('Using {} model {}'.format(args.model,'='*20))
+    logging.info('{} Using {}, with learning rate {}, training size {}, embedding size {}\
+    hidden units {}, run {} epochs.'.format('='*10, args.model, args.lr, args.train_size,
+                                    args.num_embed, args.num_hidden, args.epochs))
     model = RNN(mode=args.model, seed=args.seed, vocab_size=args.vocab_size, num_embed=args.num_embed,
                 num_hidden=args.num_hidden, num_layers=args.num_layers, dropout=args.dropout)
     model.collect_params().initialize(mx.init.Xavier(), ctx=context)

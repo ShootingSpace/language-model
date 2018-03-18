@@ -17,9 +17,10 @@ class RNN(gluon.Block):
             mx.random.seed(seed)
 
         with self.name_scope():
-            # self.drop = nn.Dropout(dropout)
-            # self.encoder = nn.Embedding(vocab_size, num_embed,
-            #                             weight_initializer = mx.init.Uniform(0.1))
+            self.drop = nn.Dropout(dropout)
+            if num_embed:
+                self.encoder = nn.Embedding(vocab_size, num_embed,
+                                    weight_initializer = mx.init.Uniform(0.1))
             if mode == 'rnn_relu':
                 self.rnn = rnn.RNN(num_hidden, num_layers, activation='relu', dropout=dropout,
                                    input_size=num_embed)
@@ -37,12 +38,19 @@ class RNN(gluon.Block):
                                  "rnn_tanh, lstm, and gru"%mode)
             self.decoder = nn.Dense(vocab_size, in_units = num_hidden)
             self.num_hidden = num_hidden
+            self.num_embed = num_embed
 
     def forward(self, inputs, hidden):
-        with inputs.context:
-            output, hidden = self.rnn(inputs, hidden)
-            decoded = self.decoder(output.reshape((-1, self.num_hidden)))
-            return decoded, hidden
+        if self.num_embed:
+            with inputs.context:
+                emb = self.drop(self.encoder(inputs))
+                output, hidden = self.rnn(emb, hidden)
+        else:
+            with inputs.context:
+                output, hidden = self.rnn(inputs, hidden)
+
+        decoded = self.decoder(output.reshape((-1, self.num_hidden)))
+        return decoded, hidden
 
     def begin_state(self, *args, **kwargs):
         return self.rnn.begin_state(*args, **kwargs)

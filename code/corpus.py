@@ -27,7 +27,6 @@ class Corpus(object):
 
     def tokenize(self, path, sequence_length, size=None):
         """Tokenizes a text file.
-           return one hot representation of each token
         """
         assert os.path.exists(path)
         # Loads the context sentence by sentence
@@ -39,10 +38,10 @@ class Corpus(object):
                                                      unknown_token='UNK')
 
         print('Load {} data'.format(path))
-        X_D_train = self.seqs_to_lmXY(corpus_indexing)
+        X_D = self.seqs_to_lmXY(corpus_indexing)
 
         # corpus_indexing = self.make_fix_length_sequence(corpus_indexing[0], sequence_length)
-        return X_D_train
+        return X_D
 
     def seqs_to_lmXY(self, seqs):
         ''' list of tuple'''
