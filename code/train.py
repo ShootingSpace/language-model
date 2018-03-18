@@ -57,6 +57,7 @@ parser.add_argument('--seed', type=int, default=2018, help='seed')
 parser.add_argument('--load_params', type=int, default=0, help='whether load pramas from file')
 parser.add_argument('--pretrained_model', type=str, default='model.params', help='The saved model file')
 parser.add_argument('--optimizer', type=str, default='sgd', help='Optimizer for gluon trainer')
+parser.add_argument('--logfile', type=str, default='model', help='Log file')
 args = parser.parse_args()
 
 def softmax(y_linear, temperature=1.0):
@@ -278,7 +279,7 @@ if __name__ == '__main__':
     output_dir = args.output_dir
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    file_handler = logging.FileHandler(pjoin(output_dir, args.model + "_log.txt"))
+    file_handler = logging.FileHandler(pjoin(output_dir, args.logfile + "_log.txt"))
     logging.getLogger().addHandler(file_handler)
 
     run_loss = -1
@@ -334,7 +335,7 @@ if __name__ == '__main__':
     vocab_size = args.vocab_size
     stats = []
     predict_lm('dev')
-    stats = [] # clear 
+    stats = [] # clear
     predict_lm('test')
 
 
