@@ -25,7 +25,7 @@ class RNN(gluon.Block):
                 self.rnn = rnn.RNN(num_hidden, num_layers, activation='relu', dropout=dropout,
                                    input_size=num_embed)
             elif mode == 'rnn_tanh':
-                self.rnn = rnn.RNN(num_hidden, num_layers, dropout=dropout,
+                self.rnn = rnn.RNN(num_hidden, num_layers, activation='tanh', dropout=dropout,
                                    input_size=num_embed)
             elif mode == 'lstm':
                 self.rnn = rnn.LSTM(num_hidden, num_layers, dropout=dropout,

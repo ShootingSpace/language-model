@@ -54,6 +54,10 @@ parser.add_argument('--gctype', type=str, default='none',
 parser.add_argument('--gcthreshold', type=float, default=0.5,
                     help='threshold for 2bit gradient compression')
 parser.add_argument('--seed', type=int, default=2018, help='seed')
+parser.add_argument('--load_params', type=int, default=0, help='whether load pramas from file')
+parser.add_argument('--pretrained_model', type=str, default='model.params', help='The saved model file')
+parser.add_argument('--optimizer', type=str, default='sgd', help='Optimizer for gluon trainer')
+parser.add_argument('--logfile', type=str, default='model', help='Log file')
 args = parser.parse_args()
 
 def softmax(y_linear, temperature=1.0):
@@ -124,7 +128,7 @@ def train():
         ############################
         # Attenuate the learning rate.
         ############################
-        if args.anneal > 0:
+        if args.anneal > 0 and args.optimizer=='sgd':
             learning_rate = args.lr/((epoch+0.0+args.anneal)/args.anneal)
             trainer.set_learning_rate(learning_rate)
 
@@ -177,7 +181,7 @@ def train():
 
         val_loss = eval(X_D_dev)
         logging.info('[Epoch %d] cost %.2fs, lr=%.6f, validation loss %.6f, perplexity %.6f' % (
-            epoch + 1, time.time() - start_time, learning_rate, val_loss, math.exp(val_loss)))
+            epoch + 1, time.time() - start_time, trainer.learning_rate, val_loss, math.exp(val_loss)))
 
         if val_loss < best_val:
             best_val = val_loss
@@ -204,20 +208,20 @@ def make_inputs(data, label=None):
     return data, label
 
 
-def predict_lm():
+def predict_lm(data):
     # get vocabulary
     vocab = pd.read_table(data_folder + "/vocab.wiki.txt", header=None, sep="\s+", index_col=0, names=['count', 'freq'], )
     num_to_word = dict(enumerate(vocab.index[:vocab_size]))
     word_to_num = invert_dict(num_to_word)
     # load test data
-    sents, test_span = load_lm_np_dataset(data_folder + '/wiki-test.txt', args.test_size)
-    S_np_test = docs_to_indices(sents, word_to_num, 1, 0)
-    X_np_test, D_np_test = seqs_to_lmnpXY(S_np_test)
-    logging.info("Load test set in lm-ln mode with size {}".format(X_np_test.size))
-    np_acc_test = compute_acc_lmnp(X_np_test, D_np_test)
-    logging.info('Number prediction accuracy on test set: {}'.format(np_acc_test))
-    test_span = np.concatenate((np.array(stats), np.array(test_span, ndmin=2).T), axis = 1)
-    np.savetxt(args.model+'test_span.csv', np.array(test_span), delimiter=',')
+    sents, span = load_lm_np_dataset(data_folder + '/wiki-'+ data + '.txt')
+    S_np = docs_to_indices(sents, word_to_num, 1, 0)
+    X_np, D_np = seqs_to_lmnpXY(S_np)
+    logging.info("Load {} set in lm-ln mode with size {}".format(data, X_np.size))
+    np_acc = compute_acc_lmnp(X_np, D_np)
+    logging.info('Number prediction accuracy on {} set: {}'.format(data, np_acc))
+    span = np.concatenate((np.array(stats), np.array(span, ndmin=2).T), axis = 1)
+    np.savetxt(args.model+ '_' + data +'_span.csv', np.array(span), delimiter=',')
 
 def load_lm_np_dataset(fname, size=None):
     sents = []
@@ -255,6 +259,7 @@ def compare_num_pred(x, d):
         d        the desired verb and its (re)inflected form (singular/plural), as indices, e.g.: [7, 8]
         return 1 if p(d[0]) > p(d[1]), 0 otherwise
     '''
+
     hidden = model.begin_state(func = mx.nd.zeros, batch_size=args.batch_size, ctx=context)
     data, _ = make_inputs(mx.nd.array(x))
 
@@ -274,7 +279,7 @@ if __name__ == '__main__':
     output_dir = args.output_dir
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    file_handler = logging.FileHandler(pjoin(output_dir, args.model + "_log.txt"))
+    file_handler = logging.FileHandler(pjoin(output_dir, args.logfile + "_log.txt"))
     logging.getLogger().addHandler(file_handler)
 
     run_loss = -1
@@ -310,10 +315,14 @@ if __name__ == '__main__':
                                     args.num_embed, args.num_hidden, args.epochs))
     model = RNN(mode=args.model, seed=args.seed, vocab_size=args.vocab_size, num_embed=args.num_embed,
                 num_hidden=args.num_hidden, num_layers=args.num_layers, dropout=args.dropout)
-    model.collect_params().initialize(mx.init.Xavier(), ctx=context)
+    if args.load_params:
+        logging.info('Load pretrianed model from {}'.format(args.pretrained_model))
+        model.load_params(args.pretrained_model, ctx=context)
+    else:
+        model.collect_params().initialize(mx.init.Xavier(), ctx=context)
 
-    trainer = gluon.Trainer(model.collect_params(), 'sgd',
-                            {'learning_rate': args.lr, 'momentum': 0, 'wd': 0})
+    trainer = gluon.Trainer(model.collect_params(), args.optimizer,
+                            {'learning_rate': args.lr})
 
     loss = gluon.loss.SoftmaxCrossEntropyLoss(sparse_label=False, batch_axis=1)
 
@@ -325,7 +334,9 @@ if __name__ == '__main__':
     data_folder = args.data_folder
     vocab_size = args.vocab_size
     stats = []
-    predict_lm()
+    predict_lm('dev')
+    stats = [] # clear
+    predict_lm('test')
 
 
     # test_L = eval(X_D_test)
